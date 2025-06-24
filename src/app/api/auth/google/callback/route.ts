@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { db } from '@/lib/firebaseAdmin';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);

@@ -4,6 +4,9 @@ import { db } from '@/lib/firebaseAdmin';
 import { fetchProjectInboxEmails } from '@/lib/gmail';
 import { getGeminiReply } from '@/lib/gemini';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
