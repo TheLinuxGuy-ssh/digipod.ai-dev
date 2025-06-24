@@ -1,7 +1,9 @@
+node_modules/
 src/generated/
 src/generated/**
 prisma/
 prisma/**
 generated/
 generated/**
-node_modules/ 
+**/generated/**
+**/prisma/** 
