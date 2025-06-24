@@ -1,12 +1,38 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, react/jsx-key, react-hooks/exhaustive-deps, prefer-const */
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db as clientDb } from '@/lib/firebase';
-import { ArrowLeftIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, ClockIcon, EnvelopeIcon, UserCircleIcon, PaperAirplaneIcon, XMarkIcon, SunIcon, MoonIcon, InboxIcon, BoltIcon, ChevronDownIcon, ChevronUpIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, ClockIcon, EnvelopeIcon, UserCircleIcon, PaperAirplaneIcon, XMarkIcon, InboxIcon, BoltIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { doc, onSnapshot } from 'firebase/firestore';
+
+// Add interfaces at the top
+interface Project {
+  id: string;
+  name: string;
+  clientEmail?: string;
+  userId: string;
+  currentPhase: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  phaseHistory?: { id: string; phase: string; timestamp: string | Date }[];
+  clientMessages?: { id: string; body: string; from: string; createdAt: string | Date }[];
+}
+interface Email {
+  id: string;
+  from: string;
+  subject: string;
+  date: string;
+  snippet: string;
+  body: string;
+  aiReply?: string;
+  aiReplyStatus?: string;
+  aiReplySentAt?: string;
+  intent?: string;
+}
 
 async function fetchProjectInbox(projectId: string) {
   const user = auth.currentUser;
@@ -51,7 +77,7 @@ function Spinner() {
 }
 
 // Add dialog component for custom responses
-function ResponseDialog({ isOpen, onClose, onSend, email }: { isOpen: boolean; onClose: () => void; onSend: (message: string) => void; email: any }) {
+function ResponseDialog({ isOpen, onClose, onSend, email }: { isOpen: boolean; onClose: () => void; onSend: (message: string) => void; email: Email | null }) {
   const [message, setMessage] = useState('');
 
   const handleSend = () => {
@@ -113,12 +139,10 @@ function ResponseDialog({ isOpen, onClose, onSend, email }: { isOpen: boolean; o
 }
 
 // Side chat drawer for AI conversation
-function ChatDrawer({ open, onClose, email, initialAIReply, onRegenerate, onSendUserMessage, chatHistory, loadingAI, onSendToClient, sendingToClient }: {
+function ChatDrawer({ open, onClose, email, onSendUserMessage, chatHistory, loadingAI, onSendToClient, sendingToClient }: {
   open: boolean;
   onClose: () => void;
-  email: any;
-  initialAIReply: string;
-  onRegenerate: () => void;
+  email: Email | null;
   onSendUserMessage: (message: string) => void;
   chatHistory: { sender: 'user' | 'ai', text: string }[];
   loadingAI: boolean;
@@ -162,7 +186,7 @@ function ChatDrawer({ open, onClose, email, initialAIReply, onRegenerate, onSend
         </div>
         {/* Chat history */}
         {chatHistory.map((msg, idx) => (
-          <div key={idx} className={`flex ${msg.sender === 'ai' ? 'justify-end' : 'justify-start'}`}>
+          <div key={`${msg.sender}-${idx}`} className={`flex ${msg.sender === 'ai' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-xs p-3 rounded-lg text-sm text-gray-900 ${msg.sender === 'ai' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-100'}`}>
               {msg.text}
             </div>
@@ -201,7 +225,7 @@ function ChatDrawer({ open, onClose, email, initialAIReply, onRegenerate, onSend
         <button
           className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold shadow-sm disabled:opacity-50 flex items-center gap-2 justify-center"
           disabled={!lastReply || !lastReply.text || sendingToClient}
-          onClick={() => lastReply && lastReply.text && onSendToClient(lastReply.text, email.id)}
+          onClick={() => lastReply && lastReply.text && onSendToClient(lastReply.text, String(email.id ?? 'unknown'))}
         >
           <EnvelopeIcon className="h-5 w-5" />
           Send to Client
@@ -233,20 +257,16 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   } else {
     id = params.id;
   }
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [advancing, setAdvancing] = useState(false);
-  const [inbox, setInbox] = useState<any[]>([]);
-  const [aiReplies, setAiReplies] = useState<{ [id: string]: { replyText: string; trigger: string } }>({});
-  const [loadingReply, setLoadingReply] = useState<string | null>(null);
+  const [inbox, setInbox] = useState<Email[]>([]);
   const [clientEmailInput, setClientEmailInput] = useState('');
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
   const [showCustomResponse, setShowCustomResponse] = useState(false);
-  const [selectedEmail, setSelectedEmail] = useState<any>(null);
+  const [selectedEmail] = useState<Email | null>(null);
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
-  const [chatEmail, setChatEmail] = useState<any>(null);
+  const [chatEmail, setChatEmail] = useState<Email | null>(null);
   const [chatHistory, setChatHistory] = useState<{ sender: 'user' | 'ai', text: string }[]>([]);
   const [loadingAIChat, setLoadingAIChat] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -287,9 +307,27 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     // Real-time Firestore listener for project phase and data
     const unsub = onSnapshot(doc(clientDb, 'projects', id), (docSnap) => {
       if (docSnap.exists()) {
-        const projectData = { id: docSnap.id, ...docSnap.data() };
+        const data = docSnap.data() as Record<string, unknown>;
+        function getDate(val: unknown): string | Date {
+          if (typeof val === 'string') return val;
+          if (val && typeof val === 'object' && 'toDate' in val && typeof (val as { toDate?: () => Date }).toDate === 'function') {
+            return (val as { toDate: () => Date }).toDate();
+          }
+          return '';
+        }
+        const projectData: Project = {
+          id: docSnap.id,
+          name: typeof data.name === 'string' ? data.name : '',
+          clientEmail: typeof data.clientEmail === 'string' ? data.clientEmail : undefined,
+          userId: typeof data.userId === 'string' ? data.userId : '',
+          currentPhase: typeof data.currentPhase === 'string' ? data.currentPhase : '',
+          createdAt: getDate(data.createdAt),
+          updatedAt: getDate(data.updatedAt),
+          phaseHistory: Array.isArray(data.phaseHistory) ? data.phaseHistory as Project['phaseHistory'] : [],
+          clientMessages: Array.isArray(data.clientMessages) ? data.clientMessages as Project['clientMessages'] : [],
+        };
         setProject(projectData);
-        setClientEmailInput((projectData as any).clientEmail || '');
+        setClientEmailInput(projectData.clientEmail || '');
         setLoading(false);
       }
     });
@@ -354,7 +392,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         setLoading(true);
         try {
           const inboxRes = await fetchProjectInbox(project.id);
-          setInbox(inboxRes);
+          setInbox(inboxRes as Email[]);
         } finally {
           setLoading(false);
         }
@@ -365,7 +403,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     checkAndFetch();
     interval = setInterval(checkAndFetch, 5000);
     return () => clearInterval(interval);
-  }, [project?.id, project?.clientEmail]);
+  }, [project?.id, project?.clientEmail, gmailConnected, gmailEmail]);
 
   // Detect phase change and show toast/animation
   useEffect(() => {
@@ -377,18 +415,17 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       setTimeout(() => setToast(null), 2500);
     }
     prevPhaseRef.current = project.currentPhase;
-  }, [project?.currentPhase]);
+  }, [project]);
 
   // After fetching inbox, check for unsure intents
   useEffect(() => {
     async function checkUnsure() {
       if (!inbox.length) return setUnsureAlert(false);
-      // Fetch intents for all messages (assume backend stores intent in clientMessage or fetch via API)
       const unsure = inbox.some(msg => msg.intent === 'unsure');
       setUnsureAlert(unsure);
     }
     checkUnsure();
-  }, [inbox]);
+  }, [inbox, project]);
 
   // Track and increment hours saved for new AI replies and phase advances
   useEffect(() => {
@@ -431,8 +468,8 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     // Auto-refresh project and inbox after phase change
     const projectRes = await fetch(`/api/projects/${id}`);
     const inboxRes = await fetchProjectInbox(id);
-    setProject(await projectRes.json());
-    setInbox(inboxRes);
+    setProject(await projectRes.json() as Project);
+    setInbox(inboxRes as Email[]);
     setAdvancing(false);
     if (data.success) {
       setToast(`AI: ${data.aiReply || 'Phase advanced!'} (Phase advanced)`);
@@ -440,18 +477,6 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       setToast(`AI: ${data.reason || 'Phase not advanced.'}`);
     }
     setTimeout(() => setToast(null), 5000);
-  };
-
-  const handleGenerateReply = async (email: any) => {
-    setLoadingReply(email.id);
-    const res = await fetch('/api/gemini/reply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: email.body, clientMessageId: email.id }),
-    });
-    const data = await res.json();
-    setInbox(prev => prev.map(msg => msg.id === email.id ? { ...msg, aiReply: data.replyText, aiReplyStatus: 'draft' } : msg));
-    setLoadingReply(null);
   };
 
   // When client email is set/updated, immediately fetch filtered emails with loader
@@ -462,38 +487,20 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     setInboxLoading(true);
     try {
       await updateProjectClientEmail(id, clientEmailInput.trim());
-      setProject((prev: any) => prev ? { ...prev, clientEmail: clientEmailInput.trim() } : null);
+      setProject((prevState: Project | null) => prevState ? { ...prevState, clientEmail: clientEmailInput.trim() } : null);
       // Immediately fetch filtered emails after setting client email
       const newInbox = await fetchProjectInbox(id);
-      setInbox(newInbox);
-    } catch (err: any) {
-      console.error('Failed to update client email:', err);
-      setInbox([]); // Clear inbox on error
+      setInbox(newInbox as Email[]);
+    } catch {
+      setToast('Failed to update client email');
     } finally {
       setUpdatingEmail(false);
       setInboxLoading(false);
     }
   };
 
-  const handleCustomResponse = (email: any) => {
-    setSelectedEmail(email);
-    setShowCustomResponse(true);
-  };
-
-  const handleSendCustomResponse = (message: string) => {
-    if (selectedEmail) {
-      setAiReplies(prev => ({ 
-        ...prev, 
-        [selectedEmail.id]: { 
-          replyText: message, 
-          trigger: null 
-        } 
-      }));
-    }
-  };
-
   // New: open chat drawer and start with AI reply
-  const handleOpenChatDrawer = async (email: any) => {
+  const handleOpenChatDrawer = async (email: Email) => {
     setChatEmail(email);
     setChatDrawerOpen(true);
     setChatHistory([]);
@@ -566,7 +573,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       } else {
         setToast(data.error || 'Failed to send email');
       }
-    } catch (err) {
+    } catch {
       setToast('Failed to send email');
     } finally {
       setSendingToClient(false);
@@ -596,36 +603,10 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="text-red-600 text-xl mb-4">Error</div>
-          <p className="text-gray-600">{error}</p>
-          <button onClick={() => router.push('/dashboard')} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg">
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (!project) return <div className="p-8">Loading...</div>;
 
   const phases = ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY'];
   const phaseIcons = [<ClockIcon className="h-5 w-5" />, <ChatBubbleLeftRightIcon className="h-5 w-5" />, <CheckCircleIcon className="h-5 w-5" />, <CheckCircleIcon className="h-5 w-5" />];
-
-  const toggleDarkMode = () => {
-    const isCurrentlyDark = document.documentElement.classList.contains('dark');
-    if (isCurrentlyDark) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('digipod-dark-mode', 'false');
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('digipod-dark-mode', 'true');
-    }
-    forceRerender(x => x + 1);
-  };
 
   return (
     <div className="min-h-screen font-sans bg-gray-50">
@@ -646,7 +627,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
             const isActive = project.currentPhase === phase;
             const isCompleted = phases.indexOf(project.currentPhase) > idx;
             return (
-              <div key={phase} className="flex-1 flex flex-col items-center relative">
+              <div key={`${phase}-${idx}`} className="flex-1 flex flex-col items-center relative">
                 <motion.div
                   animate={isActive && phaseAnim ? { scale: [1, 1.2, 0.95, 1] } : {}}
                   transition={{ duration: 0.8, times: [0, 0.3, 0.7, 1] }}
@@ -707,10 +688,10 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                   )}
                   {inbox.length === 0 && !inboxLoading && <div className="text-gray-400">No client emails found for this project.</div>}
                   <div className="space-y-6">
-                    {inbox.map(email => {
+                    {inbox.map((email, idx) => {
                       return (
                         <motion.div
-                          key={email.id}
+                          key={`${email.id}-${idx}`}
                           initial={{ opacity: 0, y: 24 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 24 }}
@@ -719,7 +700,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                           style={{ boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.10)' }}
                         >
                           {/* Status badge */}
-                          <div className="absolute top-3 right-4 z-10">{statusBadge(email.aiReplyStatus)}</div>
+                          <div className="absolute top-3 right-4 z-10">{statusBadge(email.aiReplyStatus ?? '')}</div>
                           {/* Client Email */}
                           <div className="flex items-start gap-3">
                             <div className="flex-shrink-0">
@@ -741,7 +722,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                             <ol className="relative border-l-4 border-blue-200 pl-4">
                               <AnimatePresence>
                                 <motion.li
-                                  key={email.id + '-received'}
+                                  key={`${email.id}-received`}
                                   className="mb-6 ml-6 flex items-center"
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
@@ -758,7 +739,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                                 </motion.li>
                                 {email.aiReply && (
                                   <motion.li
-                                    key={email.id + '-ai-reply'}
+                                    key={`${email.id}-ai-reply`}
                                     className="mb-6 ml-6 flex items-center"
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
@@ -776,7 +757,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                                 )}
                                 {email.aiReplySentAt && (
                                   <motion.li
-                                    key={email.id + '-sent'}
+                                    key={`${email.id}-sent`}
                                     className="ml-6 flex items-center"
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
@@ -809,7 +790,11 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                             <button
                               className="bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white px-4 py-2 rounded-lg font-semibold shadow-md flex items-center gap-2 justify-center disabled:opacity-50 transition-all duration-150 relative overflow-hidden"
                               disabled={!email.aiReply || email.aiReplyStatus === 'sent' || sendingToClient}
-                              onClick={() => sendReplyToClient(email.aiReply, email.id)}
+                              onClick={() =>
+                                email && typeof email.id === 'string'
+                                  ? sendReplyToClient(email.aiReply ?? '', email.id ?? 'unknown')
+                                  : undefined
+                              }
                               title={!email.aiReply ? 'No AI reply yet' : email.aiReplyStatus === 'sent' ? 'Already sent' : sendingToClient ? 'Sending...' : ''}
                             >
                               <span className="absolute left-0 top-0 w-full h-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(255,255,255,0.10) 0%,transparent 70%)' }} />
@@ -834,7 +819,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         <ResponseDialog
           isOpen={showCustomResponse}
           onClose={() => setShowCustomResponse(false)}
-          onSend={handleSendCustomResponse}
+          onSend={handleSendUserMessage}
           email={selectedEmail}
         />
         {/* Side Chat Drawer */}
@@ -842,8 +827,6 @@ export default function ProjectDetailPage({ params }: { params: any }) {
           open={chatDrawerOpen}
           onClose={() => setChatDrawerOpen(false)}
           email={chatEmail}
-          initialAIReply={chatHistory[0]?.text || ''}
-          onRegenerate={() => chatEmail && handleOpenChatDrawer(chatEmail)}
           onSendUserMessage={handleSendUserMessage}
           chatHistory={chatHistory}
           loadingAI={loadingAIChat}
@@ -867,8 +850,8 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         <div className="bg-white rounded-xl shadow-md p-6 flex flex-col border">
           <div className="font-semibold mb-3 flex items-center gap-2 text-blue-700"><ClockIcon className="h-5 w-5" /> Phase History</div>
           <ul className="space-y-4">
-            {(project.phaseHistory ?? []).map((ph: any, idx: number) => (
-              <li key={ph.id} className="flex items-center gap-3">
+            {(project.phaseHistory ?? []).map((ph: { id: string; phase: string; timestamp: string | Date }, idx: number) => (
+              <li key={`${ph.id}-${idx}`} className="flex items-center gap-3">
                 <div className={`h-3 w-3 rounded-full ${idx === 0 ? 'bg-blue-600' : 'bg-green-400'}`}></div>
                 <div>
                   <div className="font-semibold text-sm text-gray-900">{ph.phase}</div>

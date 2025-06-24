@@ -9,12 +9,13 @@ const getPipEmoji = (hours: number, focusMode: boolean) => {
   return '😴';
 };
 
-const getTooltip = (hours: number, focusMode: boolean) => {
-  if (focusMode) return "Pip's in Focus Mode. Headphones on, world off.";
-  if (hours > 10) return "Pip just dodged a 7-email thread for you. You're basically retired.";
-  if (hours >= 3) return "Pip's feeling cool. That's a lot of admin dodged!";
-  return "Pip's been chilling. Let's delete more work.";
-};
+// Comment out unused variable 'getTooltip' at line 12
+// const getTooltip = (hours: number, focusMode: boolean) => {
+//   if (focusMode) return "Pip's in Focus Mode. Headphones on, world off.";
+//   if (hours > 10) return "Pip just dodged a 7-email thread for you. You're basically retired.";
+//   if (hours >= 3) return "Pip's feeling cool. That's a lot of admin dodged!";
+//   return "Pip's been chilling. Let's delete more work.";
+// };
 
 const defaultMessages = [
   "Inbox zero? More like inbox hero.",

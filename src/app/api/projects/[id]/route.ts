@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 
-function isPromise<T>(value: any): value is Promise<T> {
-  return value && typeof value.then === 'function';
+function isPromise<T>(value: unknown): value is Promise<T> {
+  return !!value && typeof value === "object" && "then" in value && typeof (value as { then?: unknown }).then === "function";
 }
 
 // GET /api/projects/[id] - Get project details
 export async function GET(
   req: NextRequest,
   ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   const params = isPromise(ctx.params) ? await ctx.params : ctx.params;
   const { id } = params;
   const projectSnap = await db.collection('projects').doc(id).get();
@@ -31,13 +31,10 @@ export async function GET(
 export async function PATCH(
   req: NextRequest,
   ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
-) {
-  function isPromise<T>(value: any): value is Promise<T> {
-    return value && typeof value.then === 'function';
-  }
+): Promise<NextResponse> {
   const params = isPromise(ctx.params) ? await ctx.params : ctx.params;
   const { id } = params;
-  let clientEmail: unknown;
+  let clientEmail: string | undefined;
   try {
     const body = await req.json();
     clientEmail = body.clientEmail;

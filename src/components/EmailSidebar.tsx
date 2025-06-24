@@ -30,6 +30,11 @@ interface EmailSidebarProps {
   setCollapsed?: (v: boolean) => void;
 }
 
+interface GmailUser { email: string; }
+function isGmailUser(user: unknown): user is GmailUser {
+  return typeof user === 'object' && user !== null && 'email' in user && typeof (user as GmailUser).email === 'string';
+}
+
 export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailSidebarProps) {
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -48,7 +53,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   const [imapStatus, setImapStatus] = useState<'idle'|'connecting'|'success'|'error'>('idle');
   const [imapError, setImapError] = useState<string|null>(null);
   const [focusMode, setFocusMode] = useState(false);
-  const [gmailUser, setGmailUser] = useState<any>(null);
+  const [gmailUser, setGmailUser] = useState<unknown>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const refresh = () => fetchMailboxes().then(setMailboxes);
@@ -102,7 +107,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   const gmailConnected = gmailUser || mailboxes.some((mb: Mailbox) => mb.provider === 'gmail' && mb.status === 'connected');
   const gmailAccount = gmailUser ? { 
     id: 'gmail-oauth', 
-    email: gmailUser.email, 
+    email: isGmailUser(gmailUser) ? gmailUser.email : undefined, 
     provider: 'gmail', 
     status: 'connected' 
   } : mailboxes.find((mb: Mailbox) => mb.provider === 'gmail' && mb.status === 'connected');

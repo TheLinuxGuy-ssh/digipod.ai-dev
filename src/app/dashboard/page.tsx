@@ -4,12 +4,23 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { UserCircleIcon, PlusIcon, FolderIcon, EnvelopeIcon, CheckCircleIcon, ClockIcon, LockClosedIcon, ServerStackIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, FolderIcon, ClockIcon } from '@heroicons/react/24/outline';
 import PipAvatar from '@/components/PipAvatar';
 import AntiHustleMeter from '@/components/AntiHustleMeter';
-import FocusModeToggle from '@/components/FocusModeToggle';
 
 console.log('Firebase config (dashboard):', auth.app.options);
+
+interface Project {
+  id: string;
+  name: string;
+  clientEmail?: string;
+  userId: string;
+  currentPhase: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  phaseHistory?: { id: string; phase: string; timestamp: string | Date }[];
+  clientMessages?: { id: string; body: string; from: string; createdAt: string | Date }[];
+}
 
 async function fetchProjects() {
   const user = auth.currentUser;
@@ -58,26 +69,10 @@ async function fetchGmailUser() {
 }
 
 export default function DashboardPage() {
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [name, setName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [gmailConnected, setGmailConnected] = useState(false);
-  const [gmailEmail, setGmailEmail] = useState<string | null>(null);
-  const [lastChecked, setLastChecked] = useState<string | null>(null);
-  const [imapForm, setImapForm] = useState({
-    email: '',
-    imapHost: '',
-    imapPort: 993,
-    imapSecure: true,
-    smtpHost: '',
-    smtpPort: 465,
-    smtpSecure: true,
-    username: '',
-    password: '',
-  });
-  const [imapStatus, setImapStatus] = useState<'idle'|'connecting'|'success'|'error'>('idle');
-  const [imapError, setImapError] = useState<string|null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [hoursSaved, setHoursSaved] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
@@ -97,13 +92,9 @@ export default function DashboardPage() {
         setAuthChecking(false);
         // Fetch projects and Gmail user info only after auth
         fetchProjects().then(setProjects);
-        fetchGmailUser().then(user => {
+        fetchGmailUser().then((user: { email?: string } | null) => {
           if (user && user.email) {
-            setGmailConnected(true);
-            setGmailEmail(user.email);
-          } else {
-            setGmailConnected(false);
-            setGmailEmail(null);
+            setToast(`Gmail connected: ${user.email}`);
           }
         });
       }
@@ -126,50 +117,13 @@ export default function DashboardPage() {
     if (project && project.id) {
       setProjects([project, ...projects]);
       setName('');
-      setClientEmail && setClientEmail('');
+      setClientEmail('');
       setToast(`Project "${project.name}" created!`);
     } else {
       setToast('Failed to create project. Please try again.');
     }
     setLoading(false);
     setTimeout(() => setToast(null), 2500);
-  };
-
-  const handleFetchGmail = async () => {
-    setLastChecked('Checking...');
-    await fetch('/api/fetch-gmail', { method: 'POST' });
-    fetchProjects().then(setProjects);
-    setLastChecked(new Date().toLocaleString());
-  };
-
-  const handleImapChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setImapForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  const handleImapConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setImapStatus('connecting');
-    setImapError(null);
-    try {
-      // TODO: Replace with real userId
-      const userId = 'demo-user';
-      const res = await fetch('/api/mailbox/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...imapForm, userId }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setImapStatus('success');
-      } else {
-        setImapStatus('error');
-        setImapError(data.error || 'Connection failed');
-      }
-    } catch (err: any) {
-      setImapStatus('error');
-      setImapError(err.message || 'Connection failed');
-    }
   };
 
   // Show loading while checking authentication

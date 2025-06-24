@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       }
     }
     return NextResponse.json({ error: 'No mailbox found' }, { status: 404 });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 

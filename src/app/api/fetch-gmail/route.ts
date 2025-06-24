@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
+import { NextResponse } from 'next/server';
+import { google, gmail_v1 } from 'googleapis';
 import { db } from '@/lib/firebaseAdmin';
 import { getGeminiReply, classifyClientIntent } from '@/lib/gemini';
 
+type GmailPayloadPart = { mimeType?: string; body?: { data?: string } };
+
 // Helper: classify intent from email text
-async function classifyIntentFromEmail(text) {
+async function classifyIntentFromEmail(text: string): Promise<string> {
   const lower = text.toLowerCase();
   if (
     lower.includes('go ahead') ||
@@ -18,11 +20,12 @@ async function classifyIntentFromEmail(text) {
 }
 
 // Helper: advance project phase
-async function advanceProjectPhase(projectId) {
+async function advanceProjectPhase(projectId: string): Promise<void> {
   const projectRef = db.collection('projects').doc(projectId);
   const projectSnap = await projectRef.get();
   if (!projectSnap.exists) return;
   const project = projectSnap.data();
+  if (!project) return;
   const phases = ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY'];
   const idx = phases.indexOf(project.currentPhase);
   if (idx === -1 || idx >= phases.length - 1) return;
@@ -32,28 +35,29 @@ async function advanceProjectPhase(projectId) {
 }
 
 // Helper: fetch all Gmail messages for a user (with pagination)
-async function fetchAllGmailMessages(gmail) {
-  let messages = [];
-  let nextPageToken = undefined;
+type GmailMessage = { id: string };
+async function fetchAllGmailMessages(gmail: gmail_v1.Gmail): Promise<GmailMessage[]> {
+  let messages: GmailMessage[] = [];
+  let nextPageToken: string | undefined = undefined;
   do {
     const res = await gmail.users.messages.list({
       userId: 'me',
       labelIds: ['INBOX'],
       maxResults: 50,
       pageToken: nextPageToken,
-    });
+    }) as unknown as { data: { messages?: GmailMessage[]; nextPageToken?: string } };
     if (res.data.messages) messages = messages.concat(res.data.messages);
-    nextPageToken = res.data.nextPageToken;
+    nextPageToken = res.data.nextPageToken ?? undefined;
   } while (nextPageToken);
   return messages;
 }
 
-export async function POST() {
+export async function POST(): Promise<NextResponse> {
   console.log('FETCH-GMAIL ENDPOINT HIT');
   const usersSnap = await db.collection('users').get();
-  const users = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(u => u.gmailToken);
+  const users = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as { gmailToken?: string } })).filter((u: { gmailToken?: string }) => u.gmailToken);
   const projectsSnap = await db.collection('projects').get();
-  const projects = projectsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(p => p.clientEmail);
+  const projects = projectsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as { clientEmail?: string, userId?: string, currentPhase?: string } })).filter((p: { clientEmail?: string }) => p.clientEmail);
   const summary = [];
 
   for (const user of users) {
@@ -72,28 +76,45 @@ export async function POST() {
     try {
       allMessages = await fetchAllGmailMessages(gmail);
       console.log('Fetched Gmail messages:', allMessages.length);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error fetching Gmail messages:', err);
       continue;
     }
 
     // For each project, process all relevant emails
-    for (const project of projects.filter(p => p.userId === user.id)) {
-      const normalizedClientEmail = project.clientEmail.trim().toLowerCase();
+    for (const project of projects.filter((p: { userId?: string }) => p.userId === user.id)) {
+      const normalizedClientEmail = (project.clientEmail || '').trim().toLowerCase();
       let shouldAdvance = false;
-      for (const msg of allMessages) {
-        let full;
+      for (const msg of allMessages as { id: string }[]) {
+        let full: unknown;
         try {
           full = await gmail.users.messages.get({ userId: 'me', id: msg.id, format: 'full' });
         } catch (err) {
           console.error('Error fetching message details:', err);
           continue;
         }
-        const headers = full.data.payload?.headers || [];
-        const from = headers.find(h => h.name === 'From')?.value || '';
-        const subject = headers.find(h => h.name === 'Subject')?.value || '';
-        const bodyPart = full.data.payload?.parts?.find(p => p.mimeType === 'text/plain') || full.data.payload;
-        const body = Buffer.from(bodyPart?.body?.data || '', 'base64').toString('utf-8');
+        // Type guard for Gmail message response
+        let data: unknown = undefined;
+        if (full && typeof full === 'object' && 'data' in full) {
+          data = (full as { data: unknown }).data;
+        }
+        const payload = (data && typeof data === 'object' && 'payload' in data) ? (data as { payload?: unknown }).payload : undefined;
+        const headers = (payload && typeof payload === 'object' && 'headers' in payload) ? (payload as { headers?: { name: string; value: string }[] }).headers || [] : [];
+        const from = headers.find((h) => h.name === 'From')?.value || '';
+        const subject = headers.find((h) => h.name === 'Subject')?.value || '';
+        const parts = (payload && typeof payload === 'object' && 'parts' in payload)
+          ? (payload as { parts?: GmailPayloadPart[] }).parts
+          : undefined;
+        const bodyPart = parts && Array.isArray(parts)
+          ? parts.find((p) => p.mimeType === 'text/plain')
+          : payload;
+        const body = bodyPart && typeof bodyPart === 'object' && 'body' in bodyPart
+          && (bodyPart as GmailPayloadPart).body
+          && 'data' in (bodyPart as GmailPayloadPart).body!
+          ? Buffer.from((bodyPart as GmailPayloadPart).body!.data || '', 'base64').toString('utf-8')
+          : '';
+        const internalDate = (data && typeof data === 'object' && 'internalDate' in data) ? (data as { internalDate?: string }).internalDate : undefined;
+        const snippet = (data && typeof data === 'object' && 'snippet' in data) ? (data as { snippet?: string }).snippet : '';
         // Normalize sender
         const match = from.match(/<(.+?)>/);
         const sender = match ? match[1] : from;
@@ -123,8 +144,8 @@ export async function POST() {
             gmailId: String(msg.id),
             from: 'CLIENT',
             subject,
-            date: new Date(full.data.internalDate ? parseInt(full.data.internalDate) : Date.now()),
-            snippet: full.data.snippet || '',
+            date: new Date(internalDate ? parseInt(internalDate) : Date.now()),
+            snippet: snippet || '',
             body: `Subject: ${subject}\n${body}`,
             createdAt: new Date(),
             updatedAt: new Date(),
