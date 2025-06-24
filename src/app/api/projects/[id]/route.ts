@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 function isPromise<T>(value: unknown): value is Promise<T> {
   return !!value && typeof value === "object" && "then" in value && typeof (value as { then?: unknown }).then === "function";
 }

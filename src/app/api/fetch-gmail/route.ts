@@ -3,6 +3,9 @@ import { google, gmail_v1 } from 'googleapis';
 import { db } from '@/lib/firebaseAdmin';
 import { getGeminiReply, classifyClientIntent } from '@/lib/gemini';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 type GmailPayloadPart = { mimeType?: string; body?: { data?: string } };
 
 // Helper: classify intent from email text

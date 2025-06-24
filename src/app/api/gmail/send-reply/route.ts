@@ -4,6 +4,9 @@ import { db } from '@/lib/firebaseAdmin';
 import { sendEmailReply } from '@/lib/gmail';
 import { sendSmtpEmail, decrypt } from '@/lib/imapSmtp';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const userId = await getUserIdFromRequest(req);
