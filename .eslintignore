@@ -1,0 +1,7 @@
+src/generated/
+src/generated/**
+prisma/
+prisma/**
+generated/
+generated/**
+node_modules/ 
