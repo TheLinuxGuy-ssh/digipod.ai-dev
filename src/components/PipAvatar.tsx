@@ -85,7 +85,7 @@ export default function PipAvatar({ hoursSaved, focusMode, animate, message, onC
   ];
 
   const emoji = getPipEmoji(hoursSaved, focusMode);
-  const tooltip = getTooltip(hoursSaved, focusMode);
+  // const tooltip = getTooltip(hoursSaved, focusMode); // Unused
 
   return (
     <div className="relative flex flex-col items-center cursor-pointer select-none" tabIndex={0} aria-label="Pip the Assistant">

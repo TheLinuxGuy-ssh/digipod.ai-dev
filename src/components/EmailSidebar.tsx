@@ -1,13 +1,19 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { EnvelopeIcon, CheckCircleIcon, ExclamationCircleIcon, PlusIcon, ServerStackIcon, TrashIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, DocumentTextIcon, DocumentIcon, LockClosedIcon } from '@heroicons/react/24/outline';
-import PipAvatar from './PipAvatar';
-import AntiHustleMeter from './AntiHustleMeter';
-import FocusModeToggle from './FocusModeToggle';
+import { EnvelopeIcon, CheckCircleIcon, ExclamationCircleIcon, ServerStackIcon, TrashIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, DocumentTextIcon, DocumentIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import FocusModeToggle from './FocusModeToggle';
+
+// Define a type for mailbox
+interface Mailbox {
+  id: string;
+  email: string;
+  provider: string;
+  status: string;
+}
 
 async function fetchMailboxes() {
   const res = await fetch('/api/mailbox/list');
@@ -25,7 +31,7 @@ interface EmailSidebarProps {
 }
 
 export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailSidebarProps) {
-  const [mailboxes, setMailboxes] = useState<any[]>([]);
+  const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showImapModal, setShowImapModal] = useState(false);
   const [imapForm, setImapForm] = useState({
@@ -41,9 +47,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   });
   const [imapStatus, setImapStatus] = useState<'idle'|'connecting'|'success'|'error'>('idle');
   const [imapError, setImapError] = useState<string|null>(null);
-  const [hoursSaved, setHoursSaved] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
-  const [pipAnimate, setPipAnimate] = useState(false);
   const [gmailUser, setGmailUser] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -81,19 +85,11 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
     checkGmailConnection();
     // Poll for Gmail connection every 5 seconds
     const interval = setInterval(checkGmailConnection, 5000);
-    // Load hours saved from localStorage
-    const saved = parseInt(localStorage.getItem('digipod-hours-saved') || '0', 10);
-    setHoursSaved(saved);
     // Load focus mode from localStorage
     setFocusMode(localStorage.getItem('digipod-focus-mode') === 'on');
-    // Animate Pip on mount
-    setPipAnimate(true);
-    setTimeout(() => setPipAnimate(false), 1200);
-    // Listen for localStorage changes (focus mode, hours saved)
+    // Listen for localStorage changes (focus mode)
     const handleStorage = () => {
       setFocusMode(localStorage.getItem('digipod-focus-mode') === 'on');
-      const newSaved = parseInt(localStorage.getItem('digipod-hours-saved') || '0', 10);
-      setHoursSaved(newSaved);
     };
     window.addEventListener('storage', handleStorage);
     return () => {
@@ -103,14 +99,14 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   }, [currentUser]);
 
   // Check if Gmail is already connected (either through OAuth or Mailbox)
-  const gmailConnected = gmailUser || mailboxes.some(mb => mb.provider === 'gmail' && mb.status === 'connected');
+  const gmailConnected = gmailUser || mailboxes.some((mb: Mailbox) => mb.provider === 'gmail' && mb.status === 'connected');
   const gmailAccount = gmailUser ? { 
     id: 'gmail-oauth', 
     email: gmailUser.email, 
     provider: 'gmail', 
     status: 'connected' 
-  } : mailboxes.find(mb => mb.provider === 'gmail' && mb.status === 'connected');
-  const otherAccounts = mailboxes.filter(mb => mb.provider !== 'gmail' || mb.status !== 'connected');
+  } : mailboxes.find((mb: Mailbox) => mb.provider === 'gmail' && mb.status === 'connected');
+  const otherAccounts = mailboxes.filter((mb: Mailbox) => mb.provider !== 'gmail' || mb.status !== 'connected');
 
   const handleImapChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -142,9 +138,9 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
         setImapStatus('error');
         setImapError(data.error || 'Connection failed');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setImapStatus('error');
-      setImapError(err.message || 'Connection failed');
+      setImapError((err as Error).message || 'Connection failed');
     }
   };
 

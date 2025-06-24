@@ -89,7 +89,7 @@ export default function AntiHustleMeter({ hoursSaved }: { hoursSaved: number }) 
             className="fixed top-20 left-1/2 -translate-x-1/2 bg-white border shadow-xl rounded-lg px-8 py-4 z-50 text-lg font-bold animate-fade-in"
             style={{ borderColor: '#4D55CC', color: '#4D55CC' }}
           >
-            You're basically retired.
+            You&apos;re basically retired.
           </motion.div>
         )}
       </AnimatePresence>
