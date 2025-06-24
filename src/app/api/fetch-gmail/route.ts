@@ -104,7 +104,7 @@ export async function POST() {
         // Log email details
         console.log('Processing email:', { subject, from, body });
         // Classify intent
-        let intent = await classifyIntentFromEmail(body);
+        const intent = await classifyIntentFromEmail(body);
         summary.push({ email: subject, intent });
         console.log('Classified intent:', intent, 'for subject:', subject);
         if (intent === 'approve_phase_move') {

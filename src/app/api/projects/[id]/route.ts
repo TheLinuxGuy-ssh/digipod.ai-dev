@@ -37,7 +37,7 @@ export async function PATCH(
   }
   const params = isPromise(ctx.params) ? await ctx.params : ctx.params;
   const { id } = params;
-  let clientEmail;
+  let clientEmail: unknown;
   try {
     const body = await req.json();
     clientEmail = body.clientEmail;

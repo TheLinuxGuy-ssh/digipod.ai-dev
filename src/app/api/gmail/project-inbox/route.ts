@@ -109,37 +109,4 @@ export async function GET(req: NextRequest) {
     console.error('/api/gmail/project-inbox error:', err);
     return NextResponse.json({ error: 'Failed to fetch Gmail inbox' }, { status: 500 });
   }
-}
-
-// Helper function to classify intent from email content
-function detectIntentFromEmail(body: string): 'approve_phase_move' | 'no_action' {
-  const approvalPhrases = [
-    'looks good',
-    'approved',
-    'go ahead',
-    'move forward',
-    'next step',
-    'you can continue',
-    'all set',
-    'fine with me',
-  ];
-  const lowercaseBody = body.toLowerCase();
-  return approvalPhrases.some(phrase => lowercaseBody.includes(phrase))
-    ? 'approve_phase_move'
-    : 'no_action';
-}
-
-// Helper function to move project to next phase
-async function advanceProjectPhase(projectId: string, userId: string) {
-  const projectRef = db.collection('projects').doc(projectId);
-  const projectSnap = await projectRef.get();
-  if (!projectSnap.exists) return;
-  const project = projectSnap.data();
-  if (!project || project.userId !== userId) return;
-  const phaseOrder = ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY'];
-  const currentIndex = phaseOrder.indexOf(project.currentPhase);
-  if (currentIndex === -1 || currentIndex >= phaseOrder.length - 1) return;
-  const nextPhase = phaseOrder[currentIndex + 1];
-  await projectRef.update({ currentPhase: nextPhase, updatedAt: new Date() });
-  await projectRef.collection('phaseHistory').add({ phase: nextPhase, timestamp: new Date() });
 } 
