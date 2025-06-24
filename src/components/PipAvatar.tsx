@@ -37,7 +37,6 @@ function getRandomMessage(messages: string[], lastIdx: number) {
 }
 
 export default function PipAvatar({ hoursSaved, focusMode, animate, message, onClick }: { hoursSaved: number, focusMode: boolean, animate: boolean, message?: string, onClick?: () => void }) {
-  const [hover, setHover] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [bubbleMsg, setBubbleMsg] = useState(message || defaultMessages[0]);
   const [msgIdx, setMsgIdx] = useState(0);
@@ -89,7 +88,7 @@ export default function PipAvatar({ hoursSaved, focusMode, animate, message, onC
   const tooltip = getTooltip(hoursSaved, focusMode);
 
   return (
-    <div className="relative flex flex-col items-center cursor-pointer select-none" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} tabIndex={0} aria-label="Pip the Assistant">
+    <div className="relative flex flex-col items-center cursor-pointer select-none" tabIndex={0} aria-label="Pip the Assistant">
       <AnimatePresence>
         <motion.span
           key={emoji}
@@ -131,8 +130,8 @@ export default function PipAvatar({ hoursSaved, focusMode, animate, message, onC
               <button className="absolute top-3 right-3 p-2 rounded hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); setShowLog(false); }}>
                 <span className="text-xl">✖️</span>
               </button>
-              <div className="font-bold text-lg mb-4 flex items-center gap-2">Pip's Log</div>
-              <div className="mb-4 text-gray-600 text-sm">Here's what I've done for you lately:</div>
+              <div className="font-bold text-lg mb-4 flex items-center gap-2">Pip&apos;s Log</div>
+              <div className="mb-4 text-gray-600 text-sm">Here&apos;s what I&apos;ve done for you lately:</div>
               <ul className="space-y-3">
                 {log.map((item, i) => (
                   <li key={i} className="flex items-center gap-3">

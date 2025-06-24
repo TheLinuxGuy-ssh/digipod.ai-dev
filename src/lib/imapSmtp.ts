@@ -60,10 +60,10 @@ export async function fetchImapEmails({
     auth: { user: username, pass: password },
   });
   await client.connect();
-  let lock = await client.getMailboxLock(mailbox);
+  const lock = await client.getMailboxLock(mailbox);
   const messages = [];
   try {
-    for await (let msg of client.fetch({
+    for await (const msg of client.fetch({
       seen: false,
       limit,
       source: true,

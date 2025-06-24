@@ -7,7 +7,7 @@ export default function FocusModeToggle({ focusMode, setFocusMode }: { focusMode
   const [showToast, setShowToast] = useState(false);
   const [timer, setTimer] = useState(FOCUS_DURATION);
   useEffect(() => {
-    let interval: any;
+    let interval: NodeJS.Timeout;
     if (focusMode) {
       setShowToast(true);
       interval = setInterval(() => {
@@ -61,11 +61,11 @@ export default function FocusModeToggle({ focusMode, setFocusMode }: { focusMode
       </motion.button>
       {showToast && (
         <div className="mt-2 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-semibold animate-fade-in">
-          You've entered Focus Mode. Your client can wait.
+          You&apos;ve entered Focus Mode. Your client can wait.
         </div>
       )}
       {focusMode && (
-        <div className="mt-2 text-xs text-gray-500 font-semibold">Pip put on headphones. You're unreachable. <span className="ml-1">🧢</span></div>
+        <div className="mt-2 text-xs text-gray-500 font-semibold">Pip put on headphones. You&apos;re unreachable. <span className="ml-1">🧢</span></div>
       )}
     </div>
   );
