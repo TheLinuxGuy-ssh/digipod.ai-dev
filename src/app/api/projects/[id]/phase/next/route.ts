@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import { getGeminiReply } from '@/lib/gemini';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 // POST /api/projects/[id]/phase/next - AI-driven phase advance
 export async function POST(
   req: NextRequest,

@@ -3,6 +3,9 @@ import { db } from '@/lib/firebaseAdmin';
 import { getGeminiReply } from '@/lib/gemini';
 // import { Resend } from 'resend'; // Uncomment if using Resend
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 interface Project {
   id: string;
   currentPhase: string;

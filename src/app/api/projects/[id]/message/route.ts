@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import { getGeminiReply } from '@/lib/gemini';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 interface Project { currentPhase: string; }
 
 export async function POST(

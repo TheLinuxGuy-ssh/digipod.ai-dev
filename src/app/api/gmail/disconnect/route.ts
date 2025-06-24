@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '@/lib/getUserFromRequest';
 import { db } from '@/lib/firebaseAdmin';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const userId = await getUserIdFromRequest(req);
