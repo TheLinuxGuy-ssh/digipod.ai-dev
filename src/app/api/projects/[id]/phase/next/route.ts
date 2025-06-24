@@ -14,6 +14,9 @@ export async function POST(
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
   const project = projectSnap.data();
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
   const phases = ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY'];
   const idx = phases.indexOf(project.currentPhase);
   if (idx === -1 || idx >= phases.length - 1) {

@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 // import HeaderWithPip from '../components/HeaderWithPip';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -27,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900 flex min-h-screen`}
+        className={`${inter.variable} antialiased bg-gray-50 text-gray-900 flex min-h-screen`}
       >
         <div className="flex-1 flex flex-col min-h-screen">
           {/* Global Header with Pip removed to fix server error */}

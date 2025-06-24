@@ -3,11 +3,18 @@ import { db } from '@/lib/firebaseAdmin';
 import { getGeminiReply } from '@/lib/gemini';
 // import { Resend } from 'resend'; // Uncomment if using Resend
 
+interface Project {
+  id: string;
+  currentPhase: string;
+  // Add other fields as needed
+}
+
 // Helper: find project by client email (from)
-async function findProjectByClientEmail(email) {
+async function findProjectByClientEmail(email: string): Promise<Project | null> {
   const projectsSnap = await db.collection('projects').where('clientEmail', '==', email).limit(1).get();
   if (projectsSnap.empty) return null;
-  return { id: projectsSnap.docs[0].id, ...projectsSnap.docs[0].data() };
+  const data = projectsSnap.docs[0].data();
+  return { id: projectsSnap.docs[0].id, currentPhase: data.currentPhase };
 }
 
 export async function POST(req: NextRequest) {
