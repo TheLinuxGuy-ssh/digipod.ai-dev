@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const getPipEmoji = (hours: number, focusMode: boolean) => {
   if (focusMode) return '🧢';
@@ -37,8 +36,9 @@ function getRandomMessage(messages: string[], lastIdx: number) {
   return [messages[idx], idx];
 }
 
-export default function PipAvatar({ hoursSaved, focusMode, animate, message, onClick }: { hoursSaved: number, focusMode: boolean, animate: boolean, message?: string, onClick?: () => void }) {
+export default function PipAvatar({ hoursSaved, focusMode, message }: { hoursSaved: number, focusMode: boolean, message?: string }) {
   const [showLog, setShowLog] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   const [bubbleMsg, setBubbleMsg] = useState(message || defaultMessages[0]);
   const [msgIdx, setMsgIdx] = useState(0);
   const logRef = useRef<HTMLDivElement>(null);
@@ -77,79 +77,38 @@ export default function PipAvatar({ hoursSaved, focusMode, animate, message, onC
     };
   }, [showLog]);
 
-  // Mock log data (replace with real automations if available)
-  const log = [
-    { type: 'AI Reply', detail: 'Wrote a reply to client', time: '2 min ago' },
-    { type: 'Phase Advance', detail: 'Auto-moved project to DESIGN', time: '1 hr ago' },
-    { type: 'Focus Mode', detail: 'Muted client notifications', time: 'Today' },
-    { type: 'Inbox Filter', detail: 'Filtered 7 emails', time: 'Yesterday' },
-  ];
-
   const emoji = getPipEmoji(hoursSaved, focusMode);
   // const tooltip = getTooltip(hoursSaved, focusMode); // Unused
 
   return (
-    <div className="relative flex flex-col items-center cursor-pointer select-none" tabIndex={0} aria-label="Pip the Assistant">
-      <AnimatePresence>
-        <motion.span
-          key={emoji}
-          initial={{ y: animate ? -20 : 0, scale: animate ? 1.2 : 1 }}
-          animate={{ y: 0, scale: 1 }}
-          exit={{ y: animate ? 20 : 0, scale: 0.8, opacity: 0 }}
-          transition={{ type: 'spring', bounce: 0.5, duration: 0.6 }}
-          className="text-3xl md:text-4xl lg:text-5xl drop-shadow cursor-pointer"
-          aria-label="Pip avatar"
-          onClick={onClick || (() => setShowLog(true))}
-        >
-          {emoji}
-        </motion.span>
-      </AnimatePresence>
-      {/* Speech bubble */}
-      <motion.div
-        key={bubbleMsg}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 10 }}
-        transition={{ duration: 0.3 }}
-        className="absolute left-1/2 -translate-x-1/2 top-full mt-2 bg-white text-gray-800 text-xs rounded-lg shadow-lg px-4 py-2 z-50 max-w-xs w-max break-words whitespace-pre-line border border-gray-200 font-semibold animate-fade-in text-center"
+    <div
+      className="relative flex flex-col items-center cursor-pointer select-none"
+      tabIndex={0}
+      aria-label="Pip the Assistant"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {/* Pip avatar */}
+      <span
+        className="text-3xl md:text-4xl lg:text-5xl drop-shadow"
+        aria-label="Pip avatar"
+      >
+        {emoji}
+      </span>
+      {/* Tooltip on hover */}
+      {showTooltip && (
+        <div className="absolute left-1/2 -translate-x-1/2 -top-10 sm:-top-12 bg-white text-gray-800 text-xs rounded-lg shadow-lg px-4 py-2 z-20 max-w-xs w-max break-words whitespace-pre-line border border-gray-200 font-semibold animate-fade-in text-center">
+          Pip is your anti-hustle AI assistant.\nHover to see what Pip has done for you lately.
+        </div>
+      )}
+      {/* Speech bubble (caption) always visible below Pip */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 top-full mt-2 bg-white text-gray-800 text-xs rounded-lg shadow-lg px-4 py-2 z-10 max-w-xs w-max break-words whitespace-pre-line border border-gray-200 font-semibold animate-fade-in text-center"
         style={{ minWidth: 120 }}
         role="status"
       >
         {bubbleMsg}
-      </motion.div>
-      {/* Pip's Log Modal */}
-      <AnimatePresence>
-        {showLog && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={(e) => { e.stopPropagation(); setShowLog(false); }}
-          >
-            <div ref={logRef} className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md border border-blue-100 relative" onClick={(e) => e.stopPropagation()}>
-              <button className="absolute top-3 right-3 p-2 rounded hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); setShowLog(false); }}>
-                <span className="text-xl">✖️</span>
-              </button>
-              <div className="font-bold text-lg mb-4 flex items-center gap-2">Pip&apos;s Log</div>
-              <div className="mb-4 text-gray-600 text-sm">Here&apos;s what I&apos;ve done for you lately:</div>
-              <ul className="space-y-3">
-                {log.map((item, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <span className="text-xl">{item.type === 'AI Reply' ? '💬' : item.type === 'Phase Advance' ? '🚀' : item.type === 'Focus Mode' ? '🔕' : '📥'}</span>
-                    <div>
-                      <div className="font-semibold text-gray-900 text-sm">{item.type}</div>
-                      <div className="text-xs text-gray-500">{item.detail}</div>
-                    </div>
-                    <div className="ml-auto text-xs text-gray-400">{item.time}</div>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-6 text-xs text-gray-400 text-center">More admin deleted soon…</div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 
 const FOCUS_DURATION = 25 * 60; // 25 min in seconds
 
@@ -49,16 +48,15 @@ export default function FocusModeToggle({ focusMode, setFocusMode }: { focusMode
 
   return (
     <div className="flex flex-col items-end mb-4">
-      <motion.button
+      <button
         onClick={handleToggle}
-        className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold shadow-md border transition-all duration-200 ${focusMode ? 'bg-gray-900 text-white border-gray-800' : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-100'}`}
-        whileTap={{ scale: 0.95 }}
+        className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold shadow-md border transition-all duration-200 active:scale-95 ${focusMode ? 'bg-gray-900 text-white border-gray-800' : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-100'}`}
         aria-pressed={focusMode}
       >
         <span className="text-lg">🔕</span>
         Focus Mode
         {focusMode && <span className="ml-2 text-xs font-mono bg-gray-800 text-white rounded px-2 py-0.5">{minutes}:{seconds.toString().padStart(2, '0')}</span>}
-      </motion.button>
+      </button>
       {showToast && (
         <div className="mt-2 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-semibold animate-fade-in">
           You&apos;ve entered Focus Mode. Your client can wait.

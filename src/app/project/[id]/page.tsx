@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db as clientDb } from '@/lib/firebase';
 import { ArrowLeftIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, ClockIcon, EnvelopeIcon, UserCircleIcon, PaperAirplaneIcon, XMarkIcon, InboxIcon, BoltIcon } from '@heroicons/react/24/outline';
-import { motion, AnimatePresence } from 'framer-motion';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 // Add interfaces at the top
@@ -36,13 +35,20 @@ interface Email {
 
 async function fetchProjectInbox(projectId: string) {
   const user = auth.currentUser;
-  if (!user) return [];
+  if (!user) return { emails: [], gmailError: null };
   const token = await user.getIdToken();
   const res = await fetch(`/api/gmail/project-inbox?projectId=${projectId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) return [];
-  return res.json();
+  if (!res.ok) {
+    if (res.status === 400) {
+      // Gmail not connected or other user error
+      return { emails: [], gmailError: 'Gmail not connected for this user.' };
+    }
+    return { emails: [], gmailError: 'Failed to load inbox.' };
+  }
+  const emails = await res.json();
+  return { emails, gmailError: null };
 }
 
 async function generateAIReply(body: string) {
@@ -286,6 +292,8 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   const prevClientEmail = useRef(project?.clientEmail);
   // Local loading state for just the inbox widget
   const [inboxLoading, setInboxLoading] = useState(false);
+  // Add gmailError state
+  const [gmailError, setGmailError] = useState<string | null>(null);
 
   // Check if user is authenticated
   useEffect(() => {
@@ -374,7 +382,6 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         const userData = await res.json();
         connected = !!userData.email;
         email = userData.email || null;
-        // Persist Gmail connection for the session if connected
         if (connected) {
           setGmailConnected(true);
           setGmailEmail(email);
@@ -383,7 +390,6 @@ export default function ProjectDetailPage({ params }: { params: any }) {
           setGmailEmail(null);
         }
       }
-      // Only fetch inbox if Gmail just became connected, or clientEmail changed
       if (
         connected &&
         project?.clientEmail &&
@@ -392,7 +398,8 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         setLoading(true);
         try {
           const inboxRes = await fetchProjectInbox(project.id);
-          setInbox(inboxRes as Email[]);
+          setInbox(inboxRes.emails as Email[]);
+          setGmailError(inboxRes.gmailError);
         } finally {
           setLoading(false);
         }
@@ -469,7 +476,8 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     const projectRes = await fetch(`/api/projects/${id}`);
     const inboxRes = await fetchProjectInbox(id);
     setProject(await projectRes.json() as Project);
-    setInbox(inboxRes as Email[]);
+    setInbox(inboxRes.emails as Email[]);
+    setGmailError(inboxRes.gmailError);
     setAdvancing(false);
     if (data.success) {
       setToast(`AI: ${data.aiReply || 'Phase advanced!'} (Phase advanced)`);
@@ -490,7 +498,8 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       setProject((prevState: Project | null) => prevState ? { ...prevState, clientEmail: clientEmailInput.trim() } : null);
       // Immediately fetch filtered emails after setting client email
       const newInbox = await fetchProjectInbox(id);
-      setInbox(newInbox as Email[]);
+      setInbox(newInbox.emails as Email[]);
+      setGmailError(newInbox.gmailError);
     } catch {
       setToast('Failed to update client email');
     } finally {
@@ -628,13 +637,11 @@ export default function ProjectDetailPage({ params }: { params: any }) {
             const isCompleted = phases.indexOf(project.currentPhase) > idx;
             return (
               <div key={`${phase}-${idx}`} className="flex-1 flex flex-col items-center relative">
-                <motion.div
-                  animate={isActive && phaseAnim ? { scale: [1, 1.2, 0.95, 1] } : {}}
-                  transition={{ duration: 0.8, times: [0, 0.3, 0.7, 1] }}
-                  className={`rounded-full h-10 w-10 flex items-center justify-center mb-2 border-2 ${isActive ? 'bg-blue-600 text-white border-blue-600' : isCompleted ? 'bg-green-100 text-green-700 border-green-400' : 'bg-gray-200 border-gray-300'}`}
+                <div
+                  className={`rounded-full h-10 w-10 flex items-center justify-center mb-2 border-2 transition-transform duration-700 ${isActive && phaseAnim ? 'scale-110' : ''} ${isActive ? 'bg-blue-600 text-white border-blue-600' : isCompleted ? 'bg-green-100 text-green-700 border-green-400' : 'bg-gray-200 border-gray-300'}`}
                 >
                   {phaseIcons[idx]}
-                </motion.div>
+                </div>
                 <span className={`text-xs font-semibold ${isActive ? 'text-blue-700' : isCompleted ? 'text-green-700' : 'text-gray-400'}`}>{phase}</span>
                 {idx < phases.length - 1 && (
                   <div className="absolute top-5 right-0 w-full h-0.5 bg-gray-200 z-0" style={{ left: '50%', width: '100%' }} />
@@ -663,17 +670,14 @@ export default function ProjectDetailPage({ params }: { params: any }) {
             {updatingEmail ? 'Updating...' : 'Set Email Filter'}
           </button>
         </form>
-        {/* If Gmail is connected, show the connected account */}
-        {gmailConnected && gmailEmail && (
-          <div className="mb-2 flex items-center gap-2 justify-center text-blue-700 text-sm">
-            <EnvelopeIcon className="h-5 w-5 text-blue-400" />
-            <span>Connected Gmail: <span className="font-semibold">{gmailEmail}</span></span>
-          </div>
-        )}
         {/* Show prompt or inbox based on client email presence and Gmail connection */}
         {(!project.clientEmail || !gmailConnected) ? (
           <div className="text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center font-medium">
             { !project.clientEmail ? 'Set a client email to enable the inbox for this project.' : 'Connect Gmail from the sidebar to enable the inbox.' }
+          </div>
+        ) : gmailError ? (
+          <div className="text-red-700 bg-red-50 border border-red-200 rounded-lg p-4 text-center font-medium">
+            {gmailError}
           </div>
         ) : (
           <>
@@ -690,12 +694,8 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                   <div className="space-y-6">
                     {inbox.map((email, idx) => {
                       return (
-                        <motion.div
+                        <div
                           key={`${email.id}-${idx}`}
-                          initial={{ opacity: 0, y: 24 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 24 }}
-                          transition={{ duration: 0.4, type: 'spring', bounce: 0.3 }}
                           className="group relative space-y-3 rounded-2xl border border-gray-200 shadow-lg hover:shadow-2xl transition-shadow duration-300 p-6 cursor-pointer ring-1 ring-transparent hover:ring-blue-200"
                           style={{ boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.10)' }}
                         >
@@ -720,60 +720,43 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                           {/* Activity Timeline */}
                           <div className="ml-12">
                             <ol className="relative border-l-4 border-blue-200 pl-4">
-                              <AnimatePresence>
-                                <motion.li
-                                  key={`${email.id}-received`}
+                              <li
+                                className="mb-6 ml-6 flex items-center"
+                              >
+                                <span className="absolute -left-6 flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full border-2 border-white shadow-lg animate-pulse">
+                                  <InboxIcon className="h-5 w-5 text-white" />
+                                </span>
+                                <div>
+                                  <span className="font-semibold text-gray-900">Received</span>
+                                  <span className="ml-2 text-xs text-gray-500 font-mono">{new Date(email.date).toLocaleString()}</span>
+                                </div>
+                              </li>
+                              {email.aiReply && (
+                                <li
                                   className="mb-6 ml-6 flex items-center"
-                                  initial={{ opacity: 0, x: -20 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  exit={{ opacity: 0, x: -20 }}
-                                  transition={{ duration: 0.3 }}
                                 >
-                                  <span className="absolute -left-6 flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full border-2 border-white shadow-lg animate-pulse">
-                                    <InboxIcon className="h-5 w-5 text-white" />
+                                  <span className="absolute -left-6 flex items-center justify-center w-8 h-8 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full border-2 border-white shadow-lg animate-bounce">
+                                    <BoltIcon className="h-5 w-5 text-yellow-900" />
                                   </span>
                                   <div>
-                                    <span className="font-semibold text-gray-900">Received</span>
-                                    <span className="ml-2 text-xs text-gray-500 font-mono">{new Date(email.date).toLocaleString()}</span>
+                                    <span className="font-semibold text-yellow-700">AI Reply {email.aiReplyStatus === 'sent' ? 'Sent' : 'Draft'}</span>
+                                    <span className="ml-2 text-xs text-gray-500 font-mono">{email.aiReplyStatus === 'sent' && email.aiReplySentAt ? new Date(email.aiReplySentAt).toLocaleString() : 'Ready'}</span>
                                   </div>
-                                </motion.li>
-                                {email.aiReply && (
-                                  <motion.li
-                                    key={`${email.id}-ai-reply`}
-                                    className="mb-6 ml-6 flex items-center"
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    transition={{ duration: 0.3, delay: 0.1 }}
-                                  >
-                                    <span className="absolute -left-6 flex items-center justify-center w-8 h-8 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full border-2 border-white shadow-lg animate-bounce">
-                                      <BoltIcon className="h-5 w-5 text-yellow-900" />
-                                    </span>
-                                    <div>
-                                      <span className="font-semibold text-yellow-700">AI Reply {email.aiReplyStatus === 'sent' ? 'Sent' : 'Draft'}</span>
-                                      <span className="ml-2 text-xs text-gray-500 font-mono">{email.aiReplyStatus === 'sent' && email.aiReplySentAt ? new Date(email.aiReplySentAt).toLocaleString() : 'Ready'}</span>
-                                    </div>
-                                  </motion.li>
-                                )}
-                                {email.aiReplySentAt && (
-                                  <motion.li
-                                    key={`${email.id}-sent`}
-                                    className="ml-6 flex items-center"
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    transition={{ duration: 0.3, delay: 0.2 }}
-                                  >
-                                    <span className="absolute -left-6 flex items-center justify-center w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full border-2 border-white shadow-lg animate-pulse">
-                                      <PaperAirplaneIcon className="h-5 w-5 text-white" />
-                                    </span>
-                                    <div>
-                                      <span className="font-semibold text-green-700">Sent to Client</span>
-                                      <span className="ml-2 text-xs text-gray-500 font-mono">{new Date(email.aiReplySentAt).toLocaleString()}</span>
-                                    </div>
-                                  </motion.li>
-                                )}
-                              </AnimatePresence>
+                                </li>
+                              )}
+                              {email.aiReplySentAt && (
+                                <li
+                                  className="ml-6 flex items-center"
+                                >
+                                  <span className="absolute -left-6 flex items-center justify-center w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full border-2 border-white shadow-lg animate-pulse">
+                                    <PaperAirplaneIcon className="h-5 w-5 text-white" />
+                                  </span>
+                                  <div>
+                                    <span className="font-semibold text-green-700">Sent to Client</span>
+                                    <span className="ml-2 text-xs text-gray-500 font-mono">{new Date(email.aiReplySentAt).toLocaleString()}</span>
+                                  </div>
+                                </li>
+                              )}
                             </ol>
                           </div>
                           {/* Action buttons */}
@@ -806,7 +789,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                               ) : 'Send to Client'}
                             </button>
                           </div>
-                        </motion.div>
+                        </div>
                       );
                     })}
                   </div>

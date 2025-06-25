@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import FocusModeToggle from './FocusModeToggle';
+import Image from 'next/image';
 
 // Define a type for mailbox
 interface Mailbox {
@@ -16,13 +17,32 @@ interface Mailbox {
 }
 
 async function fetchMailboxes() {
-  const res = await fetch('/api/mailbox/list');
+  const user = auth.currentUser;
+  if (!user) return [];
+  const token = await user.getIdToken();
+  const res = await fetch('/api/mailbox/list', {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
   if (!res.ok) return [];
   return res.json();
 }
 
-async function removeMailbox(id: string) {
-  await fetch(`/api/mailbox/${id}`, { method: 'DELETE' });
+// New removeMailbox using /api/mailbox/disconnect
+async function removeMailbox(provider: string, email: string) {
+  const user = auth.currentUser;
+  if (!user) return;
+  const token = await user.getIdToken();
+  await fetch('/api/mailbox/disconnect', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ provider, email })
+  });
 }
 
 interface EmailSidebarProps {
@@ -30,9 +50,10 @@ interface EmailSidebarProps {
   setCollapsed?: (v: boolean) => void;
 }
 
-interface GmailUser { email: string; }
-function isGmailUser(user: unknown): user is GmailUser {
-  return typeof user === 'object' && user !== null && 'email' in user && typeof (user as GmailUser).email === 'string';
+interface GmailUser {
+  email: string;
+  name?: string;
+  gmailConnected: boolean;
 }
 
 export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailSidebarProps) {
@@ -53,7 +74,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   const [imapStatus, setImapStatus] = useState<'idle'|'connecting'|'success'|'error'>('idle');
   const [imapError, setImapError] = useState<string|null>(null);
   const [focusMode, setFocusMode] = useState(false);
-  const [gmailUser, setGmailUser] = useState<unknown>(null);
+  const [gmailUser, setGmailUser] = useState<GmailUser | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const refresh = () => fetchMailboxes().then(setMailboxes);
@@ -103,15 +124,15 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
     };
   }, [currentUser]);
 
-  // Check if Gmail is already connected (either through OAuth or Mailbox)
-  const gmailConnected = gmailUser || mailboxes.some((mb: Mailbox) => mb.provider === 'gmail' && mb.status === 'connected');
-  const gmailAccount = gmailUser ? { 
-    id: 'gmail-oauth', 
-    email: isGmailUser(gmailUser) ? gmailUser.email : undefined, 
-    provider: 'gmail', 
-    status: 'connected' 
-  } : mailboxes.find((mb: Mailbox) => mb.provider === 'gmail' && mb.status === 'connected');
-  const otherAccounts = mailboxes.filter((mb: Mailbox) => mb.provider !== 'gmail' || mb.status !== 'connected');
+  // Remove Gmail mailbox logic from mailboxes
+  const gmailConnected = gmailUser?.gmailConnected;
+  const gmailAccount = gmailConnected ? {
+    id: 'gmail-oauth',
+    email: gmailUser!.email,
+    provider: 'gmail',
+    status: 'connected',
+  } : null;
+  const otherAccounts = mailboxes.filter((mb: Mailbox) => mb.provider !== 'gmail');
 
   const handleImapChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -149,8 +170,9 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
     }
   };
 
-  const handleRemove = async (id: string) => {
-    await removeMailbox(id);
+  // Update handleRemove to use provider and email
+  const handleRemove = async (provider: string, email: string) => {
+    await removeMailbox(provider, email);
     refresh();
   };
 
@@ -165,12 +187,23 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
 
   const handleGmailDisconnect = async () => {
     try {
-      const res = await fetch('/api/gmail/disconnect', { method: 'POST' });
+      const user = auth.currentUser;
+      if (!user) {
+        // Optionally, show a sign-in prompt
+        return;
+      }
+      const token = await user.getIdToken();
+      const res = await fetch('/api/gmail/disconnect', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       if (res.ok) {
-        // Clear the Gmail user state
         setGmailUser(null);
-        // Refresh the connection status
         await checkGmailConnection();
+        refresh();
       } else {
         console.error('Failed to disconnect Gmail');
       }
@@ -190,7 +223,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   };
 
   return (
-    <aside className={`h-screen bg-gray-100 shadow-xl flex flex-col p-4 gap-4 border-r border-gray-200 transition-all duration-200 relative ${collapsed ? 'w-20' : 'w-72'} min-w-0`}>
+    <div className={`h-screen bg-gray-100 shadow-xl flex flex-col p-4 gap-4 border-r border-gray-200 transition-all duration-200 relative ${collapsed ? 'w-20' : 'w-72'} min-w-0`} style={{ ...(collapsed ? { transform: 'translateX(-100%)' } : {}) }}>
       {/* Collapse/Expand Button - vertically centered */}
       <button
         className="absolute top-1/2 right-[-18px] z-20 bg-white border border-gray-200 shadow-md rounded-full p-1 flex items-center justify-center transition hover:bg-blue-50"
@@ -201,17 +234,11 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
         {collapsed ? <ChevronRightIcon className="h-5 w-5 text-blue-500" /> : <ChevronLeftIcon className="h-5 w-5 text-blue-500" />}
       </button>
       {/* Logo/Product */}
-      <div className={`flex items-center gap-3 mb-2 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg">D</div>
-        {!collapsed && <span className="font-extrabold text-xl tracking-tight text-blue-700">Digipod</span>}
+      <div className={`flex items-center justify-center w-full mb-2`}>
+        <Image src="/digilogo.png" alt="Digipod Logo" width={180} height={180} />
       </div>
       {/* Delight Widgets */}
-      {!collapsed && (
-        <div className="flex flex-col gap-4 mb-4">
-          <FocusModeToggle focusMode={focusMode} setFocusMode={setFocusMode} />
-          <div className="border-t border-gray-200 my-2" />
-        </div>
-      )}
+      {/* FocusModeToggle moved to bottom */}
       {/* Navigation Section */}
       <nav className={`flex flex-col gap-1 mt-2 ${collapsed ? 'items-center' : ''}`}>
         {!collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 mt-2 pl-1">Navigation</div>}
@@ -285,40 +312,30 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
                 <CheckCircleIcon className="h-4 w-4 text-green-500" title="Connected" />
               </div>
             )}
-            {!collapsed && gmailAccount.id === 'gmail-oauth' && (
-              <button 
-                className="ml-2 p-1 rounded hover:bg-red-100" 
-                title="Disconnect Gmail" 
-                onClick={e => { 
-                  e.stopPropagation(); 
-                  handleGmailDisconnect(); 
-                }}
-              >
-                <XMarkIcon className="h-4 w-4 text-red-400" />
-              </button>
-            )}
-            {!collapsed && gmailAccount.id !== 'gmail-oauth' && (
-              <button className="ml-2 p-1 rounded hover:bg-red-100" title="Remove" onClick={e => { e.stopPropagation(); handleRemove(gmailAccount.id); }}>
-                <TrashIcon className="h-4 w-4 text-red-400" />
-              </button>
-            )}
           </div>
         )}
+        {/* Add new Disconnect Gmail button for OAuth Gmail */}
+        {gmailConnected && !collapsed && (
+          <button
+            className="mt-1 px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-semibold transition text-sm w-full flex items-center gap-2 justify-center"
+            onClick={e => { e.stopPropagation(); handleGmailDisconnect(); }}
+          >
+            <XMarkIcon className="h-4 w-4 text-red-400" />
+            Disconnect Gmail
+          </button>
+        )}
+        {/* Only show IMAP/SMTP mailboxes */}
         {otherAccounts.map(mb => (
           <div
             key={mb.id}
             className={`flex items-center gap-3 shadow-sm border border-gray-100 transition cursor-pointer bg-white hover:bg-blue-50 ${activeId === mb.id ? 'ring-2 ring-blue-200' : ''} ${collapsed ? 'justify-center p-2 w-12 h-12 rounded-lg' : 'rounded-xl p-3 w-full'}`}
             onClick={() => setActiveId(mb.id)}
           >
-            {mb.provider === 'gmail' ? (
-              <EnvelopeIcon className="h-5 w-5 text-red-500" />
-            ) : (
-              <ServerStackIcon className="h-5 w-5 text-blue-400" />
-            )}
+            <ServerStackIcon className="h-5 w-5 text-blue-400" />
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-700 truncate text-sm">{mb.email}</div>
-                <div className="text-xs text-gray-400">{mb.provider === 'gmail' ? 'Gmail' : 'IMAP/SMTP'}</div>
+                <div className="text-xs text-gray-400">IMAP/SMTP</div>
               </div>
             )}
             {!collapsed && (
@@ -331,7 +348,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
               </div>
             )}
             {!collapsed && (
-              <button className="ml-2 p-1 rounded hover:bg-red-100" title="Remove" onClick={e => { e.stopPropagation(); handleRemove(mb.id); }}>
+              <button className="ml-2 p-1 rounded hover:bg-red-100" title="Remove" onClick={e => { e.stopPropagation(); handleRemove(mb.provider, mb.email); }}>
                 <TrashIcon className="h-4 w-4 text-red-400" />
               </button>
             )}
@@ -340,22 +357,22 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
       </div>
       {/* IMAP/SMTP Modal */}
       {showImapModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md relative border border-blue-100">
-            <button className="absolute top-3 right-3 p-2 rounded hover:bg-gray-100" onClick={() => setShowImapModal(false)}>
+        <div className="fixed inset-0 z-80 flex items-center justify-center backdrop-blur-sm" onClick={() => setShowImapModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md relative border border-blue-100" onClick={e => e.stopPropagation()}>
+            <button className="absolute top-3 right-3 p-2 rounded hover:bg-gray-100" onClick={() => setShowImapModal(false)} aria-label="Close">
               <XMarkIcon className="h-6 w-6 text-gray-400" />
             </button>
             <div className="font-bold text-lg mb-4 flex items-center gap-2"><ServerStackIcon className="h-6 w-6 text-blue-400" /> Connect Other Email (IMAP/SMTP)</div>
             <form onSubmit={handleImapConnect} className="grid grid-cols-1 gap-3">
-              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none" name="email" placeholder="Email address" value={imapForm.email} onChange={handleImapChange} required />
-              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none" name="username" placeholder="Username (if different)" value={imapForm.username} onChange={handleImapChange} />
-              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none" name="imapHost" placeholder="IMAP host (e.g. imap.yourdomain.com)" value={imapForm.imapHost} onChange={handleImapChange} required />
-              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none" name="imapPort" type="number" placeholder="IMAP port (993)" value={imapForm.imapPort} onChange={handleImapChange} required />
+              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none placeholder-gray-400 text-black" name="email" placeholder="Email address" value={imapForm.email} onChange={handleImapChange} required />
+              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none placeholder-gray-400 text-black" name="username" placeholder="Username (if different)" value={imapForm.username} onChange={handleImapChange} />
+              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none placeholder-gray-400 text-black" name="imapHost" placeholder="IMAP host (e.g. imap.yourdomain.com)" value={imapForm.imapHost} onChange={handleImapChange} required />
+              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none placeholder-gray-400 text-black" name="imapPort" type="number" placeholder="IMAP port (993)" value={imapForm.imapPort} onChange={handleImapChange} required />
               <label className="flex items-center gap-2 text-xs"><input type="checkbox" name="imapSecure" checked={imapForm.imapSecure} onChange={handleImapChange} /> IMAP SSL/TLS</label>
-              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none" name="smtpHost" placeholder="SMTP host (e.g. smtp.yourdomain.com)" value={imapForm.smtpHost} onChange={handleImapChange} required />
-              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none" name="smtpPort" type="number" placeholder="SMTP port (465)" value={imapForm.smtpPort} onChange={handleImapChange} required />
+              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none placeholder-gray-400 text-black" name="smtpHost" placeholder="SMTP host (e.g. smtp.yourdomain.com)" value={imapForm.smtpHost} onChange={handleImapChange} required />
+              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none placeholder-gray-400 text-black" name="smtpPort" type="number" placeholder="SMTP port (465)" value={imapForm.smtpPort} onChange={handleImapChange} required />
               <label className="flex items-center gap-2 text-xs"><input type="checkbox" name="smtpSecure" checked={imapForm.smtpSecure} onChange={handleImapChange} /> SMTP SSL/TLS</label>
-              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none" name="password" type="password" placeholder="Password or App Password" value={imapForm.password} onChange={handleImapChange} required />
+              <input className="border px-3 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none placeholder-gray-400 text-black" name="password" type="password" placeholder="Password or App Password" value={imapForm.password} onChange={handleImapChange} required />
               <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold shadow-sm disabled:opacity-50" disabled={imapStatus === 'connecting'}>
                 {imapStatus === 'connecting' ? 'Connecting...' : imapStatus === 'success' ? 'Connected!' : 'Connect'}
               </button>
@@ -367,6 +384,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
       )}
       {/* Profile/Help Section */}
       <div className={`mt-auto pt-6 border-t border-gray-100 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`}>
+        <FocusModeToggle focusMode={focusMode} setFocusMode={setFocusMode} />
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-200 flex items-center justify-center font-bold text-blue-700 text-sm">
             {currentUser?.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 
@@ -391,6 +409,6 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
           </div>
         )}
       </div>
-    </aside>
+    </div>
   );
 } 

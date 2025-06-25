@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import Image from 'next/image';
 console.log('Firebase config (signin):', auth.app.options);
 
 export default function SignInPage() {
@@ -58,7 +59,9 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white shadow-xl rounded-xl p-8 w-full max-w-md border">
-        <h1 className="text-2xl font-bold text-blue-700 mb-6 text-center">Sign In to Digipod</h1>
+        <div className="flex justify-center mb-6">
+          <Image src="/digilogo.png" alt="Digipod Logo" width={120} height={40} />
+        </div>
         <form onSubmit={handleSignIn} className="flex flex-col gap-4">
           <input
             type="email"

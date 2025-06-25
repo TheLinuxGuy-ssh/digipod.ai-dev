@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 function getMonday(date = new Date()) {
   const d = new Date(date);
@@ -24,21 +23,28 @@ const getAntiHustleText = (hours: number) => {
   return "You've still got admin goblins to slay.";
 };
 
+const confettiThresholds = [5, 10, 20];
+
 export default function AntiHustleMeter({ hoursSaved }: { hoursSaved: number }) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
+  const [lastThreshold, setLastThreshold] = useState(0);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
-    if (hoursSaved >= 10) {
+    const crossed = confettiThresholds.find(t => hoursSaved === t && lastThreshold !== t);
+    if (crossed) {
       setShowConfetti(true);
       setShowPopup(true);
+      setLastThreshold(crossed);
       const t = setTimeout(() => setShowPopup(false), 3500);
-      return () => clearTimeout(t);
+      const c = setTimeout(() => setShowConfetti(false), 2000);
+      return () => { clearTimeout(t); clearTimeout(c); };
     } else {
       setShowConfetti(false);
       setShowPopup(false);
     }
-  }, [hoursSaved]);
+  }, [hoursSaved, lastThreshold]);
 
   // Reset every Monday
   useEffect(() => {
@@ -54,45 +60,51 @@ export default function AntiHustleMeter({ hoursSaved }: { hoursSaved: number }) 
   const antiHustleText = getAntiHustleText(hoursSaved);
 
   return (
-    <div className="flex flex-col items-end w-full max-w-xs">
+    <div
+      className="relative flex flex-col items-center gap-2 w-full"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+      onFocus={() => setShowTooltip(true)}
+      onBlur={() => setShowTooltip(false)}
+      tabIndex={0}
+      aria-label="Anti-Hustle Meter"
+    >
+      <div className="relative w-full h-3 rounded-full border overflow-hidden shadow-inner" style={{ borderColor: '#4D55CC', background: '#f3f4fa' }}>
+        <div
+          className="absolute left-0 top-0 h-full rounded-full shadow-lg transition-all duration-1000"
+          style={{
+            background: 'linear-gradient(90deg, #6ee7b7, #4D55CC, #a5b4fc)',
+            boxShadow: '0 0 16px #4D55CC55',
+            width: `${Math.min(hoursSaved, 20) / 20 * 100}%`,
+          }}
+        />
+        {/* Shimmer effect */}
+        <div
+          className="absolute left-0 top-0 h-full w-full pointer-events-none animate-fade-in"
+          style={{ background: 'linear-gradient(120deg, #fff6, #fff0 60%)', opacity: 0.15 }}
+        />
+      </div>
+      {showConfetti && (
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 z-50 animate-bounce animate-fade-in">
+          <span className="text-4xl">🎉🎊</span>
+        </div>
+      )}
+      {showPopup && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-white/90 border shadow-xl rounded-lg px-8 py-4 z-50 text-lg font-bold animate-fade-in backdrop-blur"
+          style={{ borderColor: '#4D55CC', color: '#4D55CC' }}>
+          You&apos;re basically retired.
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-1">
         <span className="text-lg font-extrabold" style={{ color: '#4D55CC' }}>{hoursSaved} hr{hoursSaved === 1 ? '' : 's'} saved</span>
         <span className="text-xs text-gray-500 font-semibold">{antiHustleText}</span>
       </div>
-      <div className="relative w-full h-3 rounded-full border" style={{ borderColor: '#4D55CC', background: '#f3f4fa' }}>
-        <motion.div
-          className="absolute left-0 top-0 h-full rounded-full"
-          style={{ background: 'linear-gradient(to right, #6ee7b7, #4D55CC)' }}
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.min(hoursSaved, 20) / 20 * 100}%` }}
-          transition={{ duration: 0.8, type: 'spring', bounce: 0.3 }}
-        />
-      </div>
-      <AnimatePresence>
-        {showConfetti && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
-          >
-            <span className="text-3xl animate-bounce">🎉🎊</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {showPopup && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 bg-white border shadow-xl rounded-lg px-8 py-4 z-50 text-lg font-bold animate-fade-in"
-            style={{ borderColor: '#4D55CC', color: '#4D55CC' }}
-          >
-            You&apos;re basically retired.
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Tooltip on hover */}
+      {showTooltip && (
+        <div className="absolute left-1/2 -translate-x-1/2 -top-12 bg-white text-gray-800 text-xs rounded-lg shadow-lg px-4 py-2 z-20 max-w-xs w-max break-words whitespace-pre-line border border-gray-200 font-semibold animate-fade-in text-center">
+          This meter tracks how many hours of admin work Digipod has saved you this week.\nIt increases when AI replies or project phases advance.
+        </div>
+      )}
     </div>
   );
 }

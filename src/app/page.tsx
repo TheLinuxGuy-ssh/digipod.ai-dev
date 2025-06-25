@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import Link from 'next/link';
+import Image from 'next/image';
 
 console.log('Firebase config (landing):', auth.app.options);
 
@@ -44,10 +45,8 @@ export default function Home() {
       {/* Navigation */}
       <nav className="flex items-center justify-between p-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl rounded-lg">
-            D
-          </div>
-          <span className="font-extrabold text-2xl tracking-tight text-blue-700">Digipod</span>
+          <Image src="/digilogo.png" alt="Digipod Logo" width={120} height={40} />
+          {/* <span className="font-extrabold text-2xl tracking-tight text-blue-700">Digipod</span> */}
         </div>
         <div className="flex gap-4">
           <Link 

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import Image from 'next/image';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -56,7 +57,9 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white shadow-xl rounded-xl p-8 w-full max-w-md border">
-        <h1 className="text-2xl font-bold text-blue-700 mb-6 text-center">Sign Up for Digipod</h1>
+        <div className="flex justify-center mb-6">
+          <Image src="/digilogo.png" alt="Digipod Logo" width={120} height={40} />
+        </div>
         <form onSubmit={handleSignUp} className="flex flex-col gap-4">
           <input
             type="email"
