@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useEffect } from 'react';
 import PipAvatar from './PipAvatar';
 import Image from 'next/image';
 
@@ -7,7 +7,7 @@ export default function HeaderWithPip() {
   const [hoursSaved, setHoursSaved] = React.useState(0);
   const [focusMode, setFocusMode] = React.useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const saved = parseInt(localStorage.getItem('digipod-hours-saved') || '0', 10);
     setHoursSaved(saved);
     setFocusMode(localStorage.getItem('digipod-focus-mode') === 'on');

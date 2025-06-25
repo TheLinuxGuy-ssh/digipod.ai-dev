@@ -223,7 +223,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   };
 
   return (
-    <div className={`h-screen bg-gray-100 shadow-xl flex flex-col p-4 gap-4 border-r border-gray-200 transition-all duration-200 relative ${collapsed ? 'w-20' : 'w-72'} min-w-0`} style={{ ...(collapsed ? { transform: 'translateX(-100%)' } : {}) }}>
+    <div className={`h-screen bg-gray-100 shadow-xl flex flex-col p-4 gap-4 border-r border-gray-200 transition-all duration-200 relative ${collapsed ? 'w-20' : 'w-72'} min-w-0`}>
       {/* Collapse/Expand Button - vertically centered */}
       <button
         className="absolute top-1/2 right-[-18px] z-20 bg-white border border-gray-200 shadow-md rounded-full p-1 flex items-center justify-center transition hover:bg-blue-50"

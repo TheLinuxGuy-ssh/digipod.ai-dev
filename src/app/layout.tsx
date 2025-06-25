@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/ThemeProvider";
 // import HeaderWithPip from '../components/HeaderWithPip';
 
 const inter = Inter({
@@ -21,12 +22,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} antialiased bg-gray-50 text-gray-900 flex min-h-screen`}
+        className={`${inter.variable} antialiased text-gray-900 flex min-h-screen bg-gray-50`}
       >
-        <div className="flex-1 flex flex-col min-h-screen">
-          {/* Global Header with Pip removed to fix server error */}
-          <div className="flex-1">{children}</div>
-        </div>
+        <ThemeProvider>
+          <div className="flex-1 flex flex-col min-h-screen">
+            {/* Global Header with Pip removed to fix server error */}
+            <div className="flex-1">{children}</div>
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

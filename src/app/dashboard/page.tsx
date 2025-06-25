@@ -76,6 +76,7 @@ export default function DashboardPage() {
   const [hoursSaved, setHoursSaved] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
+  const [, forceRerender] = useState(0);
   const router = useRouter();
 
   // Check if user is authenticated
@@ -113,6 +114,13 @@ export default function DashboardPage() {
     }
   }, [toast]);
 
+  useEffect(() => {
+    // Listen for theme change event to force re-render
+    const handler = () => forceRerender(v => v + 1);
+    window.addEventListener('digipod-theme-change', handler);
+    return () => window.removeEventListener('digipod-theme-change', handler);
+  }, []);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -142,7 +150,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen bg-gradient-to-br from-[#e6e7fa] via-[#f7f8fa] to-[#e6e7fa] relative overflow-x-hidden">
+    <main className="flex-1 flex flex-col min-h-screen bg-gray-50 relative overflow-x-hidden">
       {/* Animated shimmer overlay */}
       <div className="pointer-events-none fixed inset-0 z-0 animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent" style={{ backgroundSize: '200% 100%' }} />
       {/* Hero Header */}
@@ -179,7 +187,7 @@ export default function DashboardPage() {
           <p className="text-gray-500 mb-6">Start a new project for a client. You can set the client email later.</p>
           <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3 items-center">
             <input
-              className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:outline-none bg-white/70"
+              className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:outline-none bg-white/70 border-gray-200"
               placeholder="New project name"
               value={name}
               onChange={e => setName(e.target.value)}
