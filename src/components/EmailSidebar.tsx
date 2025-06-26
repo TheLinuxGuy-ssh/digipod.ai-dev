@@ -237,123 +237,124 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
       <div className={`flex items-center justify-center w-full mb-2`}>
         <Image src="/digilogo.png" alt="Digipod Logo" width={180} height={180} />
       </div>
-      {/* Delight Widgets */}
-      {/* FocusModeToggle moved to bottom */}
-      {/* Navigation Section */}
-      <nav className={`flex flex-col gap-1 mt-2 ${collapsed ? 'items-center' : ''}`}>
-        {!collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 mt-2 pl-1">Navigation</div>}
-        <Link href="/dashboard" className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} font-semibold transition text-sm w-full`} style={{ backgroundColor: '#e6e7fa', color: '#4D55CC' }}>
-          <FolderIcon className="h-5 w-5" />
-          {!collapsed && 'Projects'}
-        </Link>
-        <button
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-400 font-semibold transition text-sm w-full cursor-not-allowed opacity-50`}
-          disabled
-        >
-          <DocumentTextIcon className="h-5 w-5" />
-          {!collapsed && 'Signatures'}
-          {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
-        </button>
-        <button
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-400 font-semibold transition text-sm w-full cursor-not-allowed opacity-50`}
-          disabled
-        >
-          <DocumentIcon className="h-5 w-5" />
-          {!collapsed && 'Proposals'}
-          {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
-        </button>
-        <button
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-400 font-semibold transition text-sm w-full cursor-not-allowed opacity-50`}
-          disabled
-        >
-          <DocumentTextIcon className="h-5 w-5" />
-          {!collapsed && 'Invoices'}
-          {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
-        </button>
-      </nav>
-      {/* Email Accounts Section */}
-      <nav className={`flex flex-col gap-1 mt-4 ${collapsed ? 'items-center' : ''}`}>
-        {!collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 mt-2 pl-1">Email Accounts</div>}
-        {!gmailConnected && (
+      {/* Main scrollable content */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {/* Navigation Section */}
+        <nav className={`flex flex-col gap-1 mt-2 ${collapsed ? 'items-center' : ''}`}>
+          {!collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 mt-2 pl-1">Navigation</div>}
+          <Link href="/dashboard" className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} font-semibold transition text-sm w-full`} style={{ backgroundColor: '#e6e7fa', color: '#4D55CC' }}>
+            <FolderIcon className="h-5 w-5" />
+            {!collapsed && 'Projects'}
+          </Link>
           <button
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold transition text-sm w-full`}
-            onClick={handleGmailConnect}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-400 font-semibold transition text-sm w-full cursor-not-allowed opacity-50`}
+            disabled
           >
-            <EnvelopeIcon className="h-5 w-5" />
-            {!collapsed && 'Connect Gmail'}
+            <DocumentTextIcon className="h-5 w-5" />
+            {!collapsed && 'Signatures'}
+            {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
           </button>
-        )}
-        <button
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 text-blue-700 font-semibold transition text-sm mt-1 w-full ${collapsed ? 'justify-center' : ''}`}
-          onClick={() => setShowImapModal(true)}
-        >
-          <ServerStackIcon className="h-5 w-5" />
-          {!collapsed && 'Connect Other'}
-        </button>
-      </nav>
-      {/* Connected Accounts */}
-      <div className={`mt-2 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`}>
-        {mailboxes.length > 0 && !collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 pl-1">Connected</div>}
-        {gmailAccount && (
-          <div
-            key={gmailAccount.id}
-            className={`flex items-center gap-3 shadow-sm border border-gray-100 transition cursor-pointer bg-white hover:bg-blue-50 ${activeId === gmailAccount.id ? 'ring-2 ring-blue-200' : ''} ${collapsed ? 'justify-center p-2 w-12 h-12 rounded-lg' : 'rounded-xl p-3 w-full'}`}
-            onClick={() => setActiveId(gmailAccount.id)}
-          >
-            <EnvelopeIcon className="h-5 w-5 text-red-500" />
-            {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-700 truncate text-sm">{gmailAccount.email}</div>
-                <div className="text-xs text-gray-400">Gmail</div>
-              </div>
-            )}
-            {!collapsed && (
-              <div>
-                <CheckCircleIcon className="h-4 w-4 text-green-500" title="Connected" />
-              </div>
-            )}
-          </div>
-        )}
-        {/* Add new Disconnect Gmail button for OAuth Gmail */}
-        {gmailConnected && !collapsed && (
           <button
-            className="mt-1 px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-semibold transition text-sm w-full flex items-center gap-2 justify-center"
-            onClick={e => { e.stopPropagation(); handleGmailDisconnect(); }}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-400 font-semibold transition text-sm w-full cursor-not-allowed opacity-50`}
+            disabled
           >
-            <XMarkIcon className="h-4 w-4 text-red-400" />
-            Disconnect Gmail
+            <DocumentIcon className="h-5 w-5" />
+            {!collapsed && 'Proposals'}
+            {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
           </button>
-        )}
-        {/* Only show IMAP/SMTP mailboxes */}
-        {otherAccounts.map(mb => (
-          <div
-            key={mb.id}
-            className={`flex items-center gap-3 shadow-sm border border-gray-100 transition cursor-pointer bg-white hover:bg-blue-50 ${activeId === mb.id ? 'ring-2 ring-blue-200' : ''} ${collapsed ? 'justify-center p-2 w-12 h-12 rounded-lg' : 'rounded-xl p-3 w-full'}`}
-            onClick={() => setActiveId(mb.id)}
+          <button
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-400 font-semibold transition text-sm w-full cursor-not-allowed opacity-50`}
+            disabled
           >
-            <ServerStackIcon className="h-5 w-5 text-blue-400" />
-            {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-700 truncate text-sm">{mb.email}</div>
-                <div className="text-xs text-gray-400">IMAP/SMTP</div>
-              </div>
-            )}
-            {!collapsed && (
-              <div>
-                {mb.status === 'connected' ? (
+            <DocumentTextIcon className="h-5 w-5" />
+            {!collapsed && 'Invoices'}
+            {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
+          </button>
+        </nav>
+        {/* Email Accounts Section */}
+        <nav className={`flex flex-col gap-1 mt-4 ${collapsed ? 'items-center' : ''}`}>
+          {!collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 mt-2 pl-1">Email Accounts</div>}
+          {!gmailConnected && (
+            <button
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold transition text-sm w-full`}
+              onClick={handleGmailConnect}
+            >
+              <EnvelopeIcon className="h-5 w-5" />
+              {!collapsed && 'Connect Gmail'}
+            </button>
+          )}
+          <button
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 text-blue-700 font-semibold transition text-sm mt-1 w-full ${collapsed ? 'justify-center' : ''}`}
+            onClick={() => setShowImapModal(true)}
+          >
+            <ServerStackIcon className="h-5 w-5" />
+            {!collapsed && 'Connect Other'}
+          </button>
+        </nav>
+        {/* Connected Accounts */}
+        <div className={`mt-2 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`}>
+          {mailboxes.length > 0 && !collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 pl-1">Connected</div>}
+          {gmailAccount && (
+            <div
+              key={gmailAccount.id}
+              className={`flex items-center gap-3 shadow-sm border border-gray-100 transition cursor-pointer bg-white hover:bg-blue-50 ${activeId === gmailAccount.id ? 'ring-2 ring-blue-200' : ''} ${collapsed ? 'justify-center p-2 w-12 h-12 rounded-lg' : 'rounded-xl p-3 w-full'}`}
+              onClick={() => setActiveId(gmailAccount.id)}
+            >
+              <EnvelopeIcon className="h-5 w-5 text-red-500" />
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-700 truncate text-sm">{gmailAccount.email}</div>
+                  <div className="text-xs text-gray-400">Gmail</div>
+                </div>
+              )}
+              {!collapsed && (
+                <div>
                   <CheckCircleIcon className="h-4 w-4 text-green-500" title="Connected" />
-                ) : (
-                  <ExclamationCircleIcon className="h-4 w-4 text-red-500" title="Error" />
-                )}
-              </div>
-            )}
-            {!collapsed && (
-              <button className="ml-2 p-1 rounded hover:bg-red-100" title="Remove" onClick={e => { e.stopPropagation(); handleRemove(mb.provider, mb.email); }}>
-                <TrashIcon className="h-4 w-4 text-red-400" />
-              </button>
-            )}
-          </div>
-        ))}
+                </div>
+              )}
+            </div>
+          )}
+          {/* Add new Disconnect Gmail button for OAuth Gmail */}
+          {gmailConnected && !collapsed && (
+            <button
+              className="mt-1 px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-semibold transition text-sm w-full flex items-center gap-2 justify-center"
+              onClick={e => { e.stopPropagation(); handleGmailDisconnect(); }}
+            >
+              <XMarkIcon className="h-4 w-4 text-red-400" />
+              Disconnect Gmail
+            </button>
+          )}
+          {/* Only show IMAP/SMTP mailboxes */}
+          {otherAccounts.map(mb => (
+            <div
+              key={mb.id}
+              className={`flex items-center gap-3 shadow-sm border border-gray-100 transition cursor-pointer bg-white hover:bg-blue-50 ${activeId === mb.id ? 'ring-2 ring-blue-200' : ''} ${collapsed ? 'justify-center p-2 w-12 h-12 rounded-lg' : 'rounded-xl p-3 w-full'}`}
+              onClick={() => setActiveId(mb.id)}
+            >
+              <ServerStackIcon className="h-5 w-5 text-blue-400" />
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-700 truncate text-sm">{mb.email}</div>
+                  <div className="text-xs text-gray-400">IMAP/SMTP</div>
+                </div>
+              )}
+              {!collapsed && (
+                <div>
+                  {mb.status === 'connected' ? (
+                    <CheckCircleIcon className="h-4 w-4 text-green-500" title="Connected" />
+                  ) : (
+                    <ExclamationCircleIcon className="h-4 w-4 text-red-500" title="Error" />
+                  )}
+                </div>
+              )}
+              {!collapsed && (
+                <button className="ml-2 p-1 rounded hover:bg-red-100" title="Remove" onClick={e => { e.stopPropagation(); handleRemove(mb.provider, mb.email); }}>
+                  <TrashIcon className="h-4 w-4 text-red-400" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
       {/* IMAP/SMTP Modal */}
       {showImapModal && (
@@ -382,8 +383,8 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
           </div>
         </div>
       )}
-      {/* Profile/Help Section */}
-      <div className={`mt-auto pt-6 border-t border-gray-100 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`}>
+      {/* Profile/Help Section - sticky at bottom */}
+      <div className={`sticky bottom-0 bg-gray-100 pt-6 border-t border-gray-100 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`}>
         <FocusModeToggle focusMode={focusMode} setFocusMode={setFocusMode} />
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-200 flex items-center justify-center font-bold text-blue-700 text-sm">
@@ -407,6 +408,17 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
             <a href="#" className="hover:text-blue-600 transition">Help</a>
             <a href="#" className="hover:text-blue-600 transition" onClick={handleLogout}>Logout</a>
           </div>
+        )}
+        {/* Privacy Policy link */}
+        {!collapsed && (
+          <a
+            href="/pp-digipod.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 text-xs text-blue-600 hover:underline text-center"
+          >
+            Privacy Policy
+          </a>
         )}
       </div>
     </div>
