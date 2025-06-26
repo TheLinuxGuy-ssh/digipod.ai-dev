@@ -127,6 +127,14 @@ export default function Home() {
       {/* Footer */}
       <footer className="text-center py-8 text-gray-500">
         <p>&copy; 2024 Digipod. Built for creative professionals.</p>
+        <a
+          href="/pp-digipod.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mt-2 text-blue-600 hover:underline text-sm"
+        >
+          Privacy Policy
+        </a>
       </footer>
     </div>
   );
