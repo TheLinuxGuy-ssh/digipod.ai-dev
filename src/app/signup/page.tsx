@@ -33,7 +33,18 @@ export default function SignUpPage() {
     setLoading(true);
     setError('');
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      // Post to onboard collection for analytics
+      await fetch('/api/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          createdAt: user.metadata.creationTime || new Date().toISOString(),
+        }),
+      });
       router.push('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign up failed');

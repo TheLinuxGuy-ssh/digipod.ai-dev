@@ -150,7 +150,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen bg-gray-50 relative overflow-x-hidden">
+    <main className="flex-1 flex flex-col min-h-screen bg-white relative overflow-x-hidden">
       {/* Animated shimmer overlay */}
       <div className="pointer-events-none fixed inset-0 z-0 animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent" style={{ backgroundSize: '200% 100%' }} />
       {/* Hero Header */}
