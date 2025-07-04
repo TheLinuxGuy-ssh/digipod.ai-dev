@@ -300,10 +300,12 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   const [totalAmount, setTotalAmount] = useState<number>(project?.totalAmount ?? 0);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'complete'>(project?.paymentStatus ?? 'pending');
   const amountLeft = Math.max((totalAmount || 0) - (advancePaid || 0), 0);
+  const [paymentDueDate, setPaymentDueDate] = useState<string | null>(project?.paymentDueDate ?? null);
   useEffect(() => {
     setAdvancePaid(project?.advancePaid ?? 0);
     setTotalAmount(project?.totalAmount ?? 0);
     setPaymentStatus(project?.paymentStatus ?? 'pending');
+    setPaymentDueDate(project?.paymentDueDate ?? null);
   }, [project]);
 
   // Check if user is authenticated
@@ -581,7 +583,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     const res = await fetch(`/api/projects/${project?.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ advancePaid, totalAmount }),
+      body: JSON.stringify({ advancePaid, totalAmount, paymentDueDate }),
     });
     if (res.ok) {
       mutate();
@@ -590,6 +592,29 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       }
     } else {
       setToast('Failed to update payment info');
+    }
+  }
+
+  // Payment Due Reminder logic
+  let paymentDueReminder: React.ReactNode = null;
+  if (paymentStatus !== 'complete' && paymentDueDate) {
+    const due = new Date(paymentDueDate);
+    const now = new Date();
+    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 3 && diffDays >= 0) {
+      paymentDueReminder = (
+        <div className="mb-4 p-3 rounded-lg bg-yellow-900 text-yellow-200 border border-yellow-700 font-semibold flex items-center gap-2 animate-pulse">
+          <BoltIcon className="h-5 w-5 text-yellow-300" />
+          Payment due in {diffDays} day{diffDays !== 1 ? 's' : ''} ({due.toLocaleDateString()})
+        </div>
+      );
+    } else if (diffDays < 0) {
+      paymentDueReminder = (
+        <div className="mb-4 p-3 rounded-lg bg-red-900 text-red-200 border border-red-700 font-semibold flex items-center gap-2 animate-pulse">
+          <BoltIcon className="h-5 w-5 text-red-300" />
+          Payment was due on {due.toLocaleDateString()}!
+        </div>
+      );
     }
   }
 
@@ -859,6 +884,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
               <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-400 to-yellow-600 text-yellow-900 shadow-md border border-yellow-400">Pending</span>
             )}
           </h2>
+          {paymentDueReminder}
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1">
               <label className="block text-blue-200 mb-1">Total Amount</label>
@@ -891,6 +917,15 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                 readOnly
                 tabIndex={-1}
                 aria-readonly
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-blue-200 mb-1">Payment Due Date</label>
+              <input
+                type="date"
+                className="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
+                value={paymentDueDate ? paymentDueDate.slice(0, 10) : ''}
+                onChange={e => setPaymentDueDate(e.target.value ? new Date(e.target.value).toISOString() : null)}
               />
             </div>
             <div className="flex flex-col gap-2">

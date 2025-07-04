@@ -39,7 +39,7 @@ export async function PATCH(
   const { id } = params;
   const updateData: Record<string, unknown> = {};
   try {
-    const { clientEmail, phases, name, advancePaid, totalAmount } = await req.json();
+    const { clientEmail, phases, name, advancePaid, totalAmount, paymentDueDate } = await req.json();
     if (clientEmail !== undefined) {
       updateData.clientEmail = clientEmail;
     }
@@ -67,6 +67,12 @@ export async function PATCH(
         return NextResponse.json({ error: 'totalAmount must be a non-negative number.' }, { status: 400 });
       }
       updateData.totalAmount = totalAmount;
+    }
+    if (paymentDueDate !== undefined) {
+      if (paymentDueDate !== null && typeof paymentDueDate !== 'string') {
+        return NextResponse.json({ error: 'paymentDueDate must be a string (ISO date) or null.' }, { status: 400 });
+      }
+      updateData.paymentDueDate = paymentDueDate;
     }
     // Always calculate amountLeft and paymentStatus
     const projectRef = db.collection('projects').doc(id);

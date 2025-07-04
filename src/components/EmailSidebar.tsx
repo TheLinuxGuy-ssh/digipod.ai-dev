@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import FocusModeToggle from './FocusModeToggle';
 import Image from 'next/image';
+import ReactDOM from 'react-dom';
 
 // Define a type for mailbox
 interface Mailbox {
@@ -76,6 +77,9 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   const [focusMode, setFocusMode] = useState(false);
   const [gmailUser, setGmailUser] = useState<GmailUser | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const connectGmailBtnRef = React.useRef<HTMLButtonElement>(null);
+  const sidebarScrollRef = React.useRef<HTMLDivElement>(null);
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);
 
   const refresh = () => fetchMailboxes().then(setMailboxes);
   
@@ -133,6 +137,32 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
     status: 'connected',
   } : null;
   const otherAccounts = mailboxes.filter((mb: Mailbox) => mb.provider !== 'gmail');
+
+  // Helper to update popup position
+  const updatePopupPos = React.useCallback(() => {
+    if (!gmailConnected && !collapsed && connectGmailBtnRef.current) {
+      const rect = connectGmailBtnRef.current.getBoundingClientRect();
+      setPopupPos({
+        top: rect.top + 2,
+        left: rect.left + (collapsed ? 60 : 288),
+      });
+    } else {
+      setPopupPos(null);
+    }
+  }, [gmailConnected, collapsed]);
+
+  // Update on mount, scroll, resize, and dependency change
+  useEffect(() => {
+    updatePopupPos();
+    const handleResize = () => updatePopupPos();
+    window.addEventListener('resize', handleResize);
+    const scrollEl = sidebarScrollRef.current;
+    if (scrollEl) scrollEl.addEventListener('scroll', updatePopupPos);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (scrollEl) scrollEl.removeEventListener('scroll', updatePopupPos);
+    };
+  }, [updatePopupPos]);
 
   const handleImapChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -223,22 +253,22 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   };
 
   return (
-    <div className={`h-screen bg-gray-900 shadow-xl flex flex-col p-4 gap-4 border-r border-gray-800 transition-all duration-200 relative ${collapsed ? 'w-20' : 'w-72'} min-w-0`}>
-      {/* Collapse/Expand Button - vertically centered */}
-      <button
-        className="absolute top-1/2 right-[-18px] z-20 bg-gray-800 border border-gray-700 shadow-md rounded-full p-1 flex items-center justify-center transition hover:bg-gray-700"
-        style={{ transform: 'translateY(-50%)' }}
-        onClick={() => setCollapsed?.(!collapsed)}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {collapsed ? <ChevronRightIcon className="h-5 w-5 text-blue-400" /> : <ChevronLeftIcon className="h-5 w-5 text-blue-400" />}
-      </button>
-      {/* Logo/Product */}
-      <div className={`flex items-center justify-center w-full mb-2`}>
-        <Image src="/digilogo.png" alt="Digipod Logo" width={180} height={180} />
-      </div>
-      {/* Main scrollable content */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className={`h-screen bg-gray-900 shadow-xl flex flex-col p-0 border-r border-gray-800 transition-all duration-200 relative ${collapsed ? 'w-20' : 'w-72'} min-w-0`}>
+      {/* Main scrollable area: logo + nav + accounts */}
+      <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto flex flex-col p-4 gap-4">
+        {/* Collapse/Expand Button - vertically centered */}
+        <button
+          className="absolute top-1/2 right-[-18px] z-20 bg-gray-800 border border-gray-700 shadow-md rounded-full p-1 flex items-center justify-center transition hover:bg-gray-700"
+          style={{ transform: 'translateY(-50%)' }}
+          onClick={() => setCollapsed?.(!collapsed)}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronRightIcon className="h-5 w-5 text-blue-400" /> : <ChevronLeftIcon className="h-5 w-5 text-blue-400" />}
+        </button>
+        {/* Logo/Product */}
+        <div className={`flex items-center justify-center w-full mb-2`}>
+          <Image src="/digilogo.png" alt="Digipod Logo" width={180} height={180} />
+        </div>
         {/* Navigation Section */}
         <nav className={`flex flex-col gap-1 mt-2 ${collapsed ? 'items-center' : ''}`}>
           {!collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 mt-2 pl-1">Navigation</div>}
@@ -246,6 +276,20 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
             <FolderIcon className="h-5 w-5" />
             {!collapsed && 'Projects'}
           </Link>
+          <button
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-500 font-semibold transition text-sm w-full cursor-not-allowed opacity-50 bg-gray-800`}
+            disabled
+          >
+            <LockClosedIcon className="h-5 w-5" />
+            {!collapsed && 'Payments'}
+          </button>
+          <button
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-500 font-semibold transition text-sm w-full cursor-not-allowed opacity-50 bg-gray-800`}
+            disabled
+          >
+            <LockClosedIcon className="h-5 w-5" />
+            {!collapsed && 'Leads'}
+          </button>
           <button
             className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-500 font-semibold transition text-sm w-full cursor-not-allowed opacity-50 bg-gray-800`}
             disabled
@@ -275,13 +319,16 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
         <nav className={`flex flex-col gap-1 mt-4 ${collapsed ? 'items-center' : ''}`}>
           {!collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 mt-2 pl-1">Email Accounts</div>}
           {!gmailConnected && (
-            <button
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} bg-gray-800 hover:bg-gray-700 text-blue-300 font-semibold transition text-sm w-full`}
-              onClick={handleGmailConnect}
-            >
-              <EnvelopeIcon className="h-5 w-5" />
-              {!collapsed && 'Connect Gmail'}
-            </button>
+            <div className="relative w-full flex flex-col items-center">
+              <button
+                ref={connectGmailBtnRef}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} bg-gray-800 hover:bg-gray-700 text-blue-300 font-semibold transition text-sm w-full`}
+                onClick={handleGmailConnect}
+              >
+                <EnvelopeIcon className="h-5 w-5" />
+                {!collapsed && 'Connect Gmail'}
+              </button>
+            </div>
           )}
           <button
             className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-900 hover:bg-gray-700 text-blue-200 font-semibold transition text-sm mt-1 w-full ${collapsed ? 'justify-center' : ''} bg-gray-800`}
@@ -382,6 +429,25 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
             </form>
           </div>
         </div>
+      )}
+      {/* Overlay popup outside sidebar */}
+      {(!gmailConnected && !collapsed && popupPos && typeof window !== 'undefined') && ReactDOM.createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: popupPos.top,
+            left: popupPos.left,
+            zIndex: 9999,
+            pointerEvents: 'auto',
+            minWidth: '80px',
+          }}
+          className="bg-red-500/30 backdrop-blur-md shadow-xl rounded-lg px-1 py-0.5 text-[10px] text-white font-semibold animate-fade-in flex items-center gap-1"
+        >
+          <span className="text-blue-500"><EnvelopeIcon className="h-4 w-4" /></span>
+          <span className="whitespace-pre-line text-center">Start by connecting<br />your Gmail</span>
+          <span className="ml-2 text-blue-400" style={{ fontSize: 24, lineHeight: 1 }}>&#8592;</span>
+        </div>,
+        document.body
       )}
       {/* Profile/Help Section - sticky at bottom */}
       <div className={`sticky bottom-0 bg-gray-900 pt-6 border-t border-gray-800 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`}>
