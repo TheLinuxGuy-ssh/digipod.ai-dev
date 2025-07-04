@@ -91,9 +91,9 @@ export default function PipAvatar({ hoursSaved, focusMode, message }: { hoursSav
       {/* Pip avatar */}
       <span
         className="text-3xl md:text-4xl lg:text-5xl drop-shadow"
-        aria-label="Pip avatar"
-      >
-        {emoji}
+          aria-label="Pip avatar"
+        >
+          {emoji}
       </span>
       {/* Tooltip on hover */}
       {showTooltip && (
@@ -108,7 +108,7 @@ export default function PipAvatar({ hoursSaved, focusMode, message }: { hoursSav
         role="status"
       >
         {bubbleMsg}
-      </div>
+            </div>
     </div>
   );
 }

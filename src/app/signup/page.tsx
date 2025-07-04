@@ -45,7 +45,7 @@ export default function SignUpPage() {
           createdAt: user.metadata.creationTime || new Date().toISOString(),
         }),
       });
-      router.push('/dashboard');
+      router.push('/onboarding');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Sign up failed');
     } finally {
@@ -66,15 +66,15 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white shadow-xl rounded-xl p-8 w-full max-w-md border">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="bg-gray-900 shadow-xl rounded-xl p-8 w-full max-w-md border border-blue-900">
         <div className="flex justify-center mb-6">
           <Image src="/digilogo.png" alt="Digipod Logo" width={120} height={40} />
         </div>
         <form onSubmit={handleSignUp} className="flex flex-col gap-4">
           <input
             type="email"
-            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none"
+            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-800 text-white placeholder-gray-400 border-gray-700"
             placeholder="Email"
             value={email}
             onChange={e => setEmail(e.target.value)}
@@ -82,7 +82,7 @@ export default function SignUpPage() {
           />
           <input
             type="password"
-            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none"
+            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-800 text-white placeholder-gray-400 border-gray-700"
             placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
@@ -91,15 +91,15 @@ export default function SignUpPage() {
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-3 rounded-lg font-semibold shadow-sm disabled:opacity-50"
+            className="bg-blue-700 hover:bg-blue-800 transition text-white px-6 py-3 rounded-lg font-semibold shadow-sm disabled:opacity-50"
             disabled={loading}
           >
             {loading ? 'Signing up...' : 'Sign Up'}
           </button>
         </form>
-        <div className="text-center text-sm text-gray-500 mt-4">
+        <div className="text-center text-sm text-gray-400 mt-4">
           Already have an account?{' '}
-          <a href="/signin" className="text-blue-600 hover:underline font-semibold">Sign in</a>
+          <a href="/signin" className="text-blue-400 hover:underline font-semibold">Sign in</a>
         </div>
       </div>
     </div>

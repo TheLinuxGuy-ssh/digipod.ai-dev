@@ -20,7 +20,8 @@ export async function POST(
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
-  const phases = ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY'];
+  const DEFAULT_PHASES = ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY'];
+  const phases = Array.isArray(project.phases) && project.phases.length > 0 ? project.phases : DEFAULT_PHASES;
   const idx = phases.indexOf(project.currentPhase);
   if (idx === -1 || idx >= phases.length - 1) {
     return NextResponse.json({ error: 'Already at final phase' }, { status: 400 });

@@ -25,6 +25,10 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+input, textarea, select {
+  color: #fff !important;
+}
+
 @keyframes progress-indeterminate {
   0% { margin-left: -50%; width: 50%; }
   100% { margin-left: 100%; width: 50%; }

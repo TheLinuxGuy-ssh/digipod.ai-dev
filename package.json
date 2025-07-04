@@ -9,6 +9,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@heroicons/react": "^2.2.0",
     "firebase": "^11.9.1",
     "firebase-admin": "^13.4.0",
@@ -17,7 +18,8 @@
     "next": "^14.2.30",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-toggle-dark-mode": "^1.1.1"
+    "react-toggle-dark-mode": "^1.1.1",
+    "swr": "^2.3.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -57,15 +57,15 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white shadow-xl rounded-xl p-8 w-full max-w-md border">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="bg-gray-900 shadow-xl rounded-xl p-8 w-full max-w-md border border-blue-900">
         <div className="flex justify-center mb-6">
           <Image src="/digilogo.png" alt="Digipod Logo" width={120} height={40} />
         </div>
         <form onSubmit={handleSignIn} className="flex flex-col gap-4">
           <input
             type="email"
-            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none"
+            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-800 text-white placeholder-gray-400 border-gray-700"
             placeholder="Email"
             value={email}
             onChange={e => setEmail(e.target.value)}
@@ -73,7 +73,7 @@ export default function SignInPage() {
           />
           <input
             type="password"
-            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none"
+            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-800 text-white placeholder-gray-400 border-gray-700"
             placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
@@ -82,15 +82,15 @@ export default function SignInPage() {
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-3 rounded-lg font-semibold shadow-sm disabled:opacity-50"
+            className="bg-blue-700 hover:bg-blue-800 transition text-white px-6 py-3 rounded-lg font-semibold shadow-sm disabled:opacity-50"
             disabled={loading}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <div className="text-center text-sm text-gray-500 mt-4">
+        <div className="text-center text-sm text-gray-400 mt-4">
           Don&apos;t have an account?{' '}
-          <a href="/signup" className="text-blue-600 hover:underline font-semibold">Sign up</a>
+          <a href="/signup" className="text-blue-400 hover:underline font-semibold">Sign up</a>
         </div>
       </div>
     </div>

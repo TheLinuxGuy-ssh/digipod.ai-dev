@@ -103,7 +103,7 @@ export default function AntiHustleMeter({ hoursSaved }: { hoursSaved: number }) 
       {showTooltip && (
         <div className="absolute left-1/2 -translate-x-1/2 -top-12 bg-white text-gray-800 text-xs rounded-lg shadow-lg px-4 py-2 z-20 max-w-xs w-max break-words whitespace-pre-line border border-gray-200 font-semibold animate-fade-in text-center">
           This meter tracks how many hours of admin work Digipod has saved you this week.\nIt increases when AI replies or project phases advance.
-        </div>
+      </div>
       )}
     </div>
   );
