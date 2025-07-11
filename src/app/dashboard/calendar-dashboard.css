@@ -1,0 +1,74 @@
+/* Custom styles for react-big-calendar in dashboard */
+.rbc-calendar {
+  background: transparent;
+  border-radius: 1.5rem;
+  font-family: 'Inter', sans-serif;
+}
+.rbc-toolbar {
+  background: transparent;
+  border: none;
+  margin-bottom: 0.5rem;
+}
+.custom-calendar-toolbar {
+  background: rgba(30,41,59,0.85) !important;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px 0 rgba(99,102,241,0.10);
+}
+.calendar-btn {
+  background: linear-gradient(90deg, #6366f1 0%, #a5b4fc 100%);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 4px 16px;
+  margin-right: 0.25rem;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px 0 rgba(99,102,241,0.10);
+  cursor: pointer;
+}
+.calendar-btn.active, .calendar-btn:hover {
+  background: linear-gradient(90deg, #a5b4fc 0%, #6366f1 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px 0 rgba(99,102,241,0.18);
+}
+.rbc-month-view, .rbc-time-view, .rbc-agenda-view {
+  background: rgba(30,41,59,0.92);
+  border-radius: 1.25rem;
+  color: #e0e7ef;
+}
+.rbc-header {
+  background: transparent;
+  color: #a5b4fc;
+  font-weight: 700;
+  border-bottom: 1px solid #334155;
+}
+.rbc-today {
+  background: rgba(99,102,241,0.10) !important;
+}
+.rbc-event, .custom-calendar-event {
+  background: linear-gradient(90deg, #6366f1 0%, #a5b4fc 100%) !important;
+  color: #fff !important;
+  border-radius: 0.75rem !important;
+  border: none !important;
+  font-weight: 600;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 8px 0 rgba(99,102,241,0.15);
+  padding: 2px 8px;
+  transition: box-shadow 0.2s;
+}
+.calendar-event-hover:hover, .rbc-event:hover {
+  box-shadow: 0 4px 16px 0 rgba(99,102,241,0.25) !important;
+  background: linear-gradient(90deg, #a5b4fc 0%, #6366f1 100%) !important;
+}
+.rbc-selected-cell {
+  background: rgba(99,102,241,0.08) !important;
+}
+.rbc-off-range-bg {
+  background: rgba(30,41,59,0.65) !important;
+}
+.rbc-agenda-date-cell, .rbc-agenda-time-cell {
+  color: #a5b4fc;
+}
+.rbc-agenda-event-cell {
+  color: #fff;
+} 

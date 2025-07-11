@@ -206,15 +206,6 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
     refresh();
   };
 
-  const handleGmailConnect = async () => {
-    const user = auth.currentUser;
-    if (!user) {
-      // Optionally, show a sign-in prompt
-      return;
-    }
-    window.location.href = `/api/auth/google?uid=${user.uid}`;
-  };
-
   const handleGmailDisconnect = async () => {
     try {
       const user = auth.currentUser;
@@ -252,10 +243,17 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
     }
   };
 
+  // Add a handler for Gmail-only OAuth
+  const handleGoogleConnect = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    window.location.href = `/api/auth/google?uid=${user.uid}`;
+  };
+
   return (
-    <div className={`h-screen bg-gray-900 shadow-xl flex flex-col p-0 border-r border-gray-800 transition-all duration-200 relative ${collapsed ? 'w-20' : 'w-72'} min-w-0`}>
+    <div className={`h-screen bg-gray-900 shadow-xl flex flex-col p-0 border-r border-gray-800 transition-all duration-200 relative z-40 ${collapsed ? 'w-20' : 'w-72'} min-w-0`} style={{ maxHeight: '100vh', overflow: 'visible', borderLeft: '4px solid #232946' }}>
       {/* Main scrollable area: logo + nav + accounts */}
-      <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto flex flex-col p-4 gap-4">
+      <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto flex flex-col p-4 gap-4" style={{ maxHeight: 'calc(100vh - 170px)' }}>
         {/* Collapse/Expand Button - vertically centered */}
         <button
           className="absolute top-1/2 right-[-18px] z-20 bg-gray-800 border border-gray-700 shadow-md rounded-full p-1 flex items-center justify-center transition hover:bg-gray-700"
@@ -266,7 +264,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
           {collapsed ? <ChevronRightIcon className="h-5 w-5 text-blue-400" /> : <ChevronLeftIcon className="h-5 w-5 text-blue-400" />}
         </button>
         {/* Logo/Product */}
-        <div className={`flex items-center justify-center w-full mb-2`}>
+        <div className={`flex items-center justify-center w-full mb-2`} style={{ paddingLeft: collapsed ? 0 : 12 }}>
           <Image src="/digilogo.png" alt="Digipod Logo" width={180} height={180} />
         </div>
         {/* Navigation Section */}
@@ -318,18 +316,19 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
         {/* Email Accounts Section */}
         <nav className={`flex flex-col gap-1 mt-4 ${collapsed ? 'items-center' : ''}`}>
           {!collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 mt-2 pl-1">Email Accounts</div>}
+          {/* Only show Connect Google button if not connected */}
           {!gmailConnected && (
             <div className="relative w-full flex flex-col items-center">
               <button
-                ref={connectGmailBtnRef}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} bg-gray-800 hover:bg-gray-700 text-blue-300 font-semibold transition text-sm w-full`}
-                onClick={handleGmailConnect}
+                onClick={handleGoogleConnect}
               >
                 <EnvelopeIcon className="h-5 w-5" />
-                {!collapsed && 'Connect Gmail'}
+                {!collapsed && 'Connect Google'}
               </button>
             </div>
           )}
+          {/* Connect Other button always visible */}
           <button
             className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-900 hover:bg-gray-700 text-blue-200 font-semibold transition text-sm mt-1 w-full ${collapsed ? 'justify-center' : ''} bg-gray-800`}
             onClick={() => setShowImapModal(true)}
@@ -368,7 +367,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
               onClick={e => { e.stopPropagation(); handleGmailDisconnect(); }}
             >
               <XMarkIcon className="h-4 w-4 text-red-300" />
-              Disconnect Gmail
+              Disconnect Google Calendar
             </button>
           )}
           {/* Only show IMAP/SMTP mailboxes */}
@@ -401,6 +400,10 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
               )}
             </div>
           ))}
+        </div>
+        {/* Centered FocusModeToggle - moved inside scrollable area */}
+        <div className="flex flex-col justify-center items-center mt-4">
+          <FocusModeToggle focusMode={focusMode} setFocusMode={setFocusMode} />
         </div>
       </div>
       {/* IMAP/SMTP Modal */}
@@ -450,8 +453,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
         document.body
       )}
       {/* Profile/Help Section - sticky at bottom */}
-      <div className={`sticky bottom-0 bg-gray-900 pt-6 border-t border-gray-800 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`}>
-        <FocusModeToggle focusMode={focusMode} setFocusMode={setFocusMode} />
+      <div className={`sticky bottom-0 bg-gray-900 pt-6 border-t border-gray-800 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`} style={{ zIndex: 10 }}>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-900 flex items-center justify-center font-bold text-blue-200 text-sm">
             {currentUser?.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 

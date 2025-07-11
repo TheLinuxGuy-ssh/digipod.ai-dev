@@ -39,9 +39,15 @@ export async function PATCH(
   const { id } = params;
   const updateData: Record<string, unknown> = {};
   try {
-    const { clientEmail, phases, name, advancePaid, totalAmount, paymentDueDate } = await req.json();
+    const { clientEmail, phases, name, advancePaid, totalAmount, paymentDueDate, clientName, emailSignature } = await req.json();
     if (clientEmail !== undefined) {
       updateData.clientEmail = clientEmail;
+    }
+    if (clientName !== undefined) {
+      updateData.clientName = clientName;
+    }
+    if (emailSignature !== undefined) {
+      updateData.emailSignature = emailSignature;
     }
     if (phases !== undefined) {
       if (!Array.isArray(phases) || phases.length < 1 || phases.length > 6 || phases.some(p => typeof p !== 'string' || !p.trim())) {

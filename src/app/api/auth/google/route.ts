@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
   const scopes = [
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/calendar.readonly', // Calendar and Gmail scopes
     'openid',
     'email',
     'profile',
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
     access_type: 'offline',
     prompt: 'consent',
     scope: scopes,
+    include_granted_scopes: true, // Always prompt for new scopes
     ...(uid ? { state: uid } : {}),
   });
   return NextResponse.redirect(url);

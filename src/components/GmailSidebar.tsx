@@ -64,7 +64,7 @@ export default function GmailSidebar() {
             className="flex items-center gap-2 px-3 py-2 rounded-lg font-semibold shadow-sm w-full transition bg-blue-600 text-white hover:bg-blue-700"
           >
             <EnvelopeIcon className="h-5 w-5" />
-            Connect Gmail
+            Connect Google Calendar
           </a>
         )}
         {gmailConnected && (

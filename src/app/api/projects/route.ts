@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       console.error('POST /api/projects: Invalid JSON body', jsonErr);
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
-    const { name, clientEmail } = body || {};
+    const { name, clientEmail, clientName, emailSignature } = body || {};
     if (!name) {
       console.error('POST /api/projects: Project name is required');
       return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
       docRef = await db.collection('projects').add({
         name,
         clientEmail: clientEmail || null,
+        clientName: clientName || '',
+        emailSignature: emailSignature || '',
         userId,
         currentPhase: 'DISCOVERY',
         createdAt: new Date(),
