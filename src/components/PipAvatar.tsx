@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 
-const getPipEmoji = (hours: number, focusMode: boolean) => {
+const getPipEmoji = (minutes: number, focusMode: boolean) => {
   if (focusMode) return '🧢';
-  if (hours > 10) return '🤖';
-  if (hours >= 3) return '😎';
+  if (minutes > 600) return '🤖'; // 10 hours in minutes
+  if (minutes >= 180) return '😎'; // 3 hours in minutes
   return '😴';
 };
 
@@ -36,7 +36,7 @@ function getRandomMessage(messages: string[], lastIdx: number) {
   return [messages[idx], idx];
 }
 
-export default function PipAvatar({ hoursSaved, focusMode, message }: { hoursSaved: number, focusMode: boolean, message?: string }) {
+export default function PipAvatar({ minutesSaved, focusMode, message }: { minutesSaved: number, focusMode: boolean, message?: string }) {
   const [showLog, setShowLog] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [bubbleMsg, setBubbleMsg] = useState(message || defaultMessages[0]);
@@ -77,7 +77,7 @@ export default function PipAvatar({ hoursSaved, focusMode, message }: { hoursSav
     };
   }, [showLog]);
 
-  const emoji = getPipEmoji(hoursSaved, focusMode);
+  const emoji = getPipEmoji(minutesSaved, focusMode);
   // const tooltip = getTooltip(hoursSaved, focusMode); // Unused
 
   return (

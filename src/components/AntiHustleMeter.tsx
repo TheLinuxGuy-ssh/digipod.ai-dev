@@ -7,32 +7,37 @@ function getMonday(date = new Date()) {
   return new Date(d.setDate(diff));
 }
 
-const getAntiHustleText = (hours: number) => {
-  if (hours >= 20) return "The system's scared of you. You're the AI now.";
-  if (hours >= 15) return "Honestly, you might be immortal now.";
-  if (hours >= 10) return "🎉 You're basically retired.";
-  if (hours >= 9) return "You're untouchable. Admin who?";
-  if (hours >= 8) return "8 hours saved. You skipped a full workday of nonsense.";
-  if (hours >= 7) return "7 hours back. Start that passion project.";
-  if (hours >= 6) return "6 hours of BS dodged. Go touch grass.";
-  if (hours >= 5) return "5 hours saved. You can nap guilt-free now.";
-  if (hours >= 4) return "That's 4 fewer hours explaining why the logo is not bigger.";
-  if (hours >= 3) return "3 hrs reclaimed. Your flow state is making a comeback.";
-  if (hours >= 2) return "2 hrs saved. Your brain says thanks.";
-  if (hours >= 1) return "1 hour of BS dodged. Welcome to the rebellion.";
+const getAntiHustleText = (minutes: number) => {
+  
+  if (minutes >= 1200) return "The system's scared of you. You're the AI now."; // 20 hours
+  if (minutes >= 900) return "Honestly, you might be immortal now."; // 15 hours
+  if (minutes >= 600) return "🎉 You're basically retired."; // 10 hours
+  if (minutes >= 540) return "You're untouchable. Admin who?"; // 9 hours
+  if (minutes >= 480) return "8 hours saved. You skipped a full workday of nonsense."; // 8 hours
+  if (minutes >= 420) return "7 hours back. Start that passion project."; // 7 hours
+  if (minutes >= 360) return "6 hours of BS dodged. Go touch grass."; // 6 hours
+  if (minutes >= 300) return "5 hours saved. You can nap guilt-free now."; // 5 hours
+  if (minutes >= 240) return "That's 4 fewer hours explaining why the logo is not bigger."; // 4 hours
+  if (minutes >= 180) return "3 hrs reclaimed. Your flow state is making a comeback."; // 3 hours
+  if (minutes >= 120) return "2 hrs saved. Your brain says thanks."; // 2 hours
+  if (minutes >= 60) return "1 hour of BS dodged. Welcome to the rebellion."; // 1 hour
+  if (minutes >= 30) return `${minutes} minutes of BS dodged. Keep it up!`;
+  if (minutes >= 10) return `${minutes} minutes saved. Your rebellion is growing.`;
+  if (minutes >= 5) return `${minutes} minutes reclaimed. Every minute counts!`;
+  if (minutes >= 1) return `${minutes} minute${minutes === 1 ? '' : 's'} of BS dodged. Welcome to the rebellion.`;
   return "You've still got admin goblins to slay.";
 };
 
-const confettiThresholds = [5, 10, 20];
+const confettiThresholds = [300, 600, 1200]; // 5 hours, 10 hours, 20 hours in minutes
 
-export default function AntiHustleMeter({ hoursSaved }: { hoursSaved: number }) {
+export default function AntiHustleMeter({ minutesSaved }: { minutesSaved: number }) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [lastThreshold, setLastThreshold] = useState(0);
   const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
-    const crossed = confettiThresholds.find(t => hoursSaved === t && lastThreshold !== t);
+    const crossed = confettiThresholds.find(t => minutesSaved === t && lastThreshold !== t);
     if (crossed) {
       setShowConfetti(true);
       setShowPopup(true);
@@ -44,20 +49,20 @@ export default function AntiHustleMeter({ hoursSaved }: { hoursSaved: number }) 
       setShowConfetti(false);
       setShowPopup(false);
     }
-  }, [hoursSaved, lastThreshold]);
+  }, [minutesSaved, lastThreshold]);
 
-  // Reset every Monday
-  useEffect(() => {
-    const lastReset = localStorage.getItem('digipod-hours-reset');
-    const now = new Date();
-    const thisMonday = getMonday(now).toDateString();
-    if (lastReset !== thisMonday) {
-      localStorage.setItem('digipod-hours-reset', thisMonday);
-      localStorage.setItem('digipod-hours-saved', '0');
-    }
-  }, []);
+      // Reset every Monday
+    useEffect(() => {
+      const lastReset = localStorage.getItem('digipod-minutes-reset');
+      const now = new Date();
+      const thisMonday = getMonday(now).toDateString();
+      if (lastReset !== thisMonday) {
+        localStorage.setItem('digipod-minutes-reset', thisMonday);
+        localStorage.setItem('digipod-minutes-saved', '0');
+      }
+    }, []);
 
-  const antiHustleText = getAntiHustleText(hoursSaved);
+    const antiHustleText = getAntiHustleText(minutesSaved);
 
   return (
     <div
@@ -75,7 +80,7 @@ export default function AntiHustleMeter({ hoursSaved }: { hoursSaved: number }) 
           style={{
             background: 'linear-gradient(90deg, #6ee7b7, #4D55CC, #a5b4fc)',
             boxShadow: '0 0 16px #4D55CC55',
-            width: `${Math.min(hoursSaved, 20) / 20 * 100}%`,
+            width: `${Math.min(minutesSaved, 1200) / 1200 * 100}%`, // 1200 minutes = 20 hours
           }}
         />
         {/* Shimmer effect */}
@@ -96,7 +101,9 @@ export default function AntiHustleMeter({ hoursSaved }: { hoursSaved: number }) 
         </div>
       )}
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg font-extrabold" style={{ color: '#4D55CC' }}>{hoursSaved} hr{hoursSaved === 1 ? '' : 's'} saved</span>
+        <span className="text-lg font-extrabold" style={{ color: '#4D55CC' }}>
+          {Math.floor(minutesSaved / 60)}h {minutesSaved % 60}m saved
+        </span>
         <span className="text-xs text-gray-500 font-semibold">{antiHustleText}</span>
       </div>
       {/* Tooltip on hover */}

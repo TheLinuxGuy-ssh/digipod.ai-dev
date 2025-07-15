@@ -8,6 +8,7 @@ import { auth } from '@/lib/firebase';
 import { ArrowLeftIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, ClockIcon, EnvelopeIcon, UserCircleIcon, PaperAirplaneIcon, XMarkIcon, BoltIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSWR from 'swr';
+import { incrementMinutesSaved } from '@/lib/hustleMeter';
 
 // Add interfaces at the top
 interface AiReplyVersion {
@@ -411,40 +412,6 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     checkUnsure();
   }, [inbox, project]);
 
-  // Track and increment hours saved for new AI replies and phase advances
-  useEffect(() => {
-    if (!project) return;
-    // --- PHASE ADVANCE ---
-    const lastCountedPhase = localStorage.getItem('digipod-last-phase') || '';
-    if (project.currentPhase && project.currentPhase !== lastCountedPhase) {
-      // Only increment if this is not the initial load
-      if (lastCountedPhase) {
-        const saved = parseInt(localStorage.getItem('digipod-hours-saved') || '0', 10);
-        localStorage.setItem('digipod-hours-saved', String(saved + 1));
-        window.dispatchEvent(new Event('storage'));
-      }
-      localStorage.setItem('digipod-last-phase', project.currentPhase);
-    }
-  }, [project?.currentPhase]);
-
-  useEffect(() => {
-    if (!inbox.length) return;
-    // --- AI REPLIES ---
-    const lastCountedAIReplies = JSON.parse(localStorage.getItem('digipod-last-ai-replies') || '[]');
-    const newAIReplyIds: string[] = [];
-    for (const email of inbox) {
-      if (email.aiReplies && email.id && !lastCountedAIReplies.includes(email.id)) {
-        newAIReplyIds.push(email.id);
-      }
-    }
-    if (newAIReplyIds.length > 0) {
-      const saved = parseInt(localStorage.getItem('digipod-hours-saved') || '0', 10);
-      localStorage.setItem('digipod-hours-saved', String(saved + newAIReplyIds.length));
-      window.dispatchEvent(new Event('storage'));
-      localStorage.setItem('digipod-last-ai-replies', JSON.stringify([...lastCountedAIReplies, ...newAIReplyIds]));
-    }
-  }, [inbox]);
-
   useEffect(() => {
     if (project && project.clientMessages) {
       setInbox(project.clientMessages);
@@ -462,9 +429,9 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     console.log('Current inbox length:', inbox.length);
     
     // Save client email to project in Firestore
-    const user = auth.currentUser;
+        const user = auth.currentUser;
     if (user) {
-      const token = await user.getIdToken();
+        const token = await user.getIdToken();
       await fetch(`/api/projects/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -500,6 +467,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     setAdvancing(false);
     if (data.success) {
       setToast(`AI: ${data.aiReply || 'Phase advanced!'} (Phase advanced)`);
+      incrementMinutesSaved();
     } else {
       setToast(`AI: ${data.reason || 'Phase not advanced.'}`);
     }
@@ -517,6 +485,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       .join('\n');
     // Always use the latest state values
     const ai = await generateAIReply(conversation, emailTone, emailTemplate, emailSignature, clientNameInput);
+    incrementMinutesSaved();
     const newReply = { subject: ai.subject || '', body: ai.body || '', closing: ai.closing || '', signature: ai.signature || '', createdAt: new Date().toISOString() };
     if (chatEmail) {
       setInbox(prev => prev.map(msg => msg.id === chatEmail.id ? { 
@@ -597,32 +566,59 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   }
 
   // Payment Due Reminder logic
-  let paymentDueReminder: React.ReactNode = null;
-  if (paymentStatus !== 'complete' && paymentDueDate) {
-    const due = new Date(paymentDueDate);
-    const now = new Date();
-    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 3 && diffDays >= 0) {
-      paymentDueReminder = (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900 text-yellow-200 border border-yellow-700 font-semibold flex items-center gap-2 animate-pulse">
-          <BoltIcon className="h-5 w-5 text-yellow-300" />
-          Payment due in {diffDays} day{diffDays !== 1 ? 's' : ''} ({due.toLocaleDateString()})
-        </div>
-      );
-    } else if (diffDays < 0) {
-      paymentDueReminder = (
-        <div className="mb-4 p-3 rounded-lg bg-red-900 text-red-200 border border-red-700 font-semibold flex items-center gap-2 animate-pulse">
-          <BoltIcon className="h-5 w-5 text-red-300" />
-          Payment was due on {due.toLocaleDateString()}!
-        </div>
-      );
+  useEffect(() => {
+    if (paymentDueDate) {
+      const due = new Date(paymentDueDate);
+      const now = new Date();
+      const oneDay = 24 * 60 * 60 * 1000;
+      const diffDays = Math.round((due.getTime() - now.getTime()) / oneDay);
+
+      if (diffDays <= 7 && diffDays > 0) {
+        setToast(`Reminder: Payment for ${project?.name} is due in ${diffDays} days.`);
+      } else if (diffDays === 0) {
+        setToast(`Reminder: Payment for ${project?.name} is due today.`);
+      }
     }
-  }
+  }, [paymentDueDate, project?.name]);
 
   // Add at the top of ProjectDetailPage, with other hooks
-  const [signatureImage, setSignatureImage] = useState<string | null>(null);
-  // Add a ref for the hidden file input
-  const signatureImageInputRef = useRef<HTMLInputElement | null>(null);
+  const [, setSignatureImage] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+
+  const handleSavePhases = async () => {
+    setEditLoading(true);
+    setPhasesError(null);
+    if (phasesDraft.some(p => !p.trim())) {
+      setPhasesError('Phase names cannot be empty.');
+      setEditLoading(false);
+      return;
+    }
+    const user = auth.currentUser;
+    if (!user) {
+      setPhasesError('You must be logged in.');
+      setEditLoading(false);
+      return;
+    }
+    const token = await user.getIdToken();
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ phases: phasesDraft }),
+      });
+      if (res.ok) {
+        mutate(); // Re-fetch project data
+        setEditPhasesOpen(false);
+      } else {
+        const data = await res.json();
+        setPhasesError(data.error || 'Failed to save phases.');
+      }
+    } catch (err) {
+      setPhasesError('An error occurred.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   // Add a handler for image upload
   function handleSignatureImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -678,6 +674,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         // If no drafts, generate a new reply, save it, and show it
         // Always use the latest state values
         const ai = await generateAIReply(msg.body, emailTone, emailTemplate, emailSignature, latestClientName);
+        incrementMinutesSaved();
         await saveAIReplyDraft(id, msg.id, ai);
         const newDrafts = await fetchAIDrafts(id, msg.id);
         setChatHistory((newDrafts || []).map((d: any) => ({
@@ -693,111 +690,73 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     }
   }
 
-  // Handler to update client name in Firestore and local state
   const handleClientNameBlur = async () => {
-    if (!id) return;
+    if (!project || clientNameInput === project.clientName) return;
     const user = auth.currentUser;
-    if (!user) return;
-    const token = await user.getIdToken();
-    await fetch(`/api/projects/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ clientName: clientNameInput }),
-    });
-    setToast('Client name saved!');
-    // Immediately update local state from Firestore to avoid stale values
-    const res = await fetch(`/api/projects/${id}`);
-    if (res.ok) {
-      const updated = await res.json();
-      setClientNameInput(updated.clientName || '');
+    if (user) {
+      const token = await user.getIdToken();
+      await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ clientName: clientNameInput }),
+      });
+      mutate();
     }
-    mutate();
-    setTimeout(() => setToast(null), 2000);
   };
 
-  // Handler to update email signature in Firestore and local state
   const handleEmailSignatureBlur = async () => {
-    if (!id) return;
+    if (!project || emailSignature === project.emailSignature) return;
     const user = auth.currentUser;
-    if (!user) return;
-    const token = await user.getIdToken();
-    await fetch(`/api/projects/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ emailSignature }),
-    });
-    setToast('Signature saved!');
-    // Immediately update local state from Firestore to avoid stale values
-    const res = await fetch(`/api/projects/${id}`);
-    if (res.ok) {
-      const updated = await res.json();
-      setEmailSignature(updated.emailSignature || '');
+    if (user) {
+      const token = await user.getIdToken();
+      await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ emailSignature }),
+      });
+      mutate();
     }
-    mutate();
-    setTimeout(() => setToast(null), 2000);
   };
-
-  useEffect(() => {
-    setFilterClientEmail(project?.clientEmail || '');
-  }, [project?.clientEmail]);
-
-  useEffect(() => {
-    if (!project?.clientEmail) {
-      setFilteredInbox([]);
-    } else {
-      setFilteredInbox(
-        inbox.filter(email => {
-          if (!email.from || !project.clientEmail) return false;
-          const match = email.from.match(/<(.+?)>/);
-          const sender = match ? match[1] : email.from;
-          return sender.trim().toLowerCase().includes(project.clientEmail.trim().toLowerCase());
-        })
-      );
-    }
-  }, [inbox, project?.clientEmail]);
 
   if (authChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="flex items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+          <span className="text-lg text-blue-200 font-semibold">Loading Project...</span>
         </div>
       </div>
     );
   }
-
-  if (typeof project === 'undefined') {
+  
+  if (!project) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading project...</p>
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="flex items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+          <span className="text-lg text-blue-200 font-semibold">Loading...</span>
         </div>
       </div>
     );
   }
-
-  if (!project) return <div className="p-8">Project not found.</div>;
-
-  const phases = project?.phases && project.phases.length > 0 ? project.phases : DEFAULT_PHASES;
-  const phaseIcons = [<ClockIcon className="h-5 w-5" />, <ChatBubbleLeftRightIcon className="h-5 w-5" />, <CheckCircleIcon className="h-5 w-5" />, <CheckCircleIcon className="h-5 w-5" />];
-
-  console.log('Inbox state:', inbox);
-  // Use a separate state for the filter input, and only apply filtering on form submit
-  // const [filterClientEmail, setFilterClientEmail] = useState(''); // Moved to top
-  // const [filteredInbox, setFilteredInbox] = useState<Email[]>([]); // Moved to top
-
+  
+  const phases = project.phases || DEFAULT_PHASES;
+  const phaseIcons = [<BoltIcon className="h-8 w-8" />, <ChatBubbleLeftRightIcon className="h-8 w-8" />, <ClockIcon className="h-8 w-8" />, <CheckCircleIcon className="h-8 w-8" />];
+  const signatureImage = null; // Replace with actual signature image if available
+  
   return (
-    <div className="min-h-screen font-sans bg-gray-900">
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 flex items-center px-8 h-16 shadow-sm">
-        <button onClick={() => router.back()} className="mr-4 text-blue-300 hover:underline flex items-center gap-1">
-          <ArrowLeftIcon className="h-5 w-5" /> Back
-        </button>
-        <h1 className="text-xl font-bold tracking-tight flex-1 text-white">{project.name}</h1>
-        <div className="flex items-center gap-2">
-          <EnvelopeIcon className="h-7 w-7 text-blue-400" />
+    <div className="min-h-screen bg-gray-900 text-white">
+      <header className="bg-gray-800/50 backdrop-blur-sm sticky top-0 z-40 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-gray-700">
+              <ArrowLeftIcon className="h-6 w-6" />
+            </button>
+            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">{project.name}</h1>
+          </div>
+          <button onClick={handleAdvance} disabled={advancing} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold shadow-md flex items-center gap-2 disabled:opacity-50 transition">
+            {advancing ? <><Spinner /> Advancing...</> : 'Advance Phase'}
+          </button>
         </div>
       </header>
       {/* Timeline Stepper */}
@@ -860,11 +819,11 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                 />
                 <span className="text-xs text-blue-400 min-h-[24px]">Enter the client&apos;s name.</span>
               </div>
-              <div className="flex flex-col w-full gap-y-4">
-                <label className="text-xs text-blue-200 font-semibold mb-2">Client Email Address</label>
-                <input
-                  className="border px-4 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800 !text-white"
-                  placeholder="e.g. client@email.com"
+            <div className="flex flex-col w-full gap-y-4">
+              <label className="text-xs text-blue-200 font-semibold mb-2">Client Email Address</label>
+              <input
+                className="border px-4 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800 !text-white"
+                placeholder="e.g. client@email.com"
                   value={filterClientEmail}
                   onChange={e => setFilterClientEmail(e.target.value)}
                   type="text"
@@ -882,31 +841,31 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                     ))}
                   </ul>
                 )} */}
-                <span className="text-xs text-blue-400 min-h-[24px]">Only emails from this address will be shown.</span>
-              </div>
+              <span className="text-xs text-blue-400 min-h-[24px]">Only emails from this address will be shown.</span>
+            </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex flex-col w-full gap-y-4">
-                <label className="text-xs text-blue-200 font-semibold mb-2">From</label>
-                <input
-                  type="date"
-                  className="border px-3 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
-                  value={emailFilterFromDate || ''}
-                  onChange={e => setEmailFilterFromDate(e.target.value || undefined)}
-                  placeholder="Start date (optional)"
-                />
-                <span className="text-xs text-blue-400 min-h-[24px]">Show emails from this date onwards.</span>
-              </div>
-              <div className="flex flex-col w-full gap-y-4">
-                <label className="text-xs text-blue-200 font-semibold mb-2">To</label>
-                <input
-                  type="date"
-                  className="border px-3 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
-                  value={emailFilterToDate || ''}
-                  onChange={e => setEmailFilterToDate(e.target.value || undefined)}
-                  placeholder="End date (optional)"
-                />
-                <span className="text-xs text-blue-400 min-h-[24px]">Show emails up to this date. Leave blank to show all.</span>
+            <div className="flex flex-col w-full gap-y-4">
+              <label className="text-xs text-blue-200 font-semibold mb-2">From</label>
+              <input
+                type="date"
+                className="border px-3 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
+                value={emailFilterFromDate || ''}
+                onChange={e => setEmailFilterFromDate(e.target.value || undefined)}
+                placeholder="Start date (optional)"
+              />
+              <span className="text-xs text-blue-400 min-h-[24px]">Show emails from this date onwards.</span>
+            </div>
+            <div className="flex flex-col w-full gap-y-4">
+              <label className="text-xs text-blue-200 font-semibold mb-2">To</label>
+              <input
+                type="date"
+                className="border px-3 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
+                value={emailFilterToDate || ''}
+                onChange={e => setEmailFilterToDate(e.target.value || undefined)}
+                placeholder="End date (optional)"
+              />
+              <span className="text-xs text-blue-400 min-h-[24px]">Show emails up to this date. Leave blank to show all.</span>
               </div>
             </div>
             <div className="flex flex-col w-full gap-y-4">
@@ -924,7 +883,12 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         </div>
         {/* Mailbox (Inbox) UI for Client Feed */}
         <div className="max-w-3xl mx-auto mb-16 space-y-8">
-          
+          {filterLoading && (
+            <div className="flex justify-center items-center py-12">
+              <Spinner />
+              <span className="ml-3 text-blue-400 text-base font-semibold">Fetching client emails...</span>
+            </div>
+          )}
           {filteredInbox.length === 0 && (
             <div className="text-gray-400 text-center py-16 text-base">No client emails found for this project.</div>
           )}
@@ -934,31 +898,31 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                 <div>
                   <div className="font-bold text-base text-gray-900">{safeDisplay(msg.subject) || '(No Subject)'}</div>
                   <div className="text-xs text-gray-600 mt-1">{safeDisplay(msg.from)}</div>
-                </div>
-                <div className="text-xs text-gray-400">{safeDisplay(msg.createdAt)}</div>
               </div>
+                <div className="text-xs text-gray-400">{safeDisplay(msg.createdAt)}</div>
+            </div>
               <div className="px-6 py-3 text-gray-700 text-sm border-b border-gray-100">
                 {msg.aiReplies && msg.aiReplies.length > 0 ? (
-                  <div>
+              <div>
                     <div className="font-semibold text-blue-700 mb-1">AI Draft (Pending Approval)</div>
                     <div className="whitespace-pre-line">{msg.aiReplies[0].body}</div>
                     <div className="mt-2 text-xs text-gray-500">{msg.aiReplies[0].signature}</div>
-                  </div>
+                      </div>
                 ) : (
                   safeDisplay(msg.body ? msg.body.slice(0, 120) + (msg.body.length > 120 ? '...' : '') : msg.snippet)
                 )}
-              </div>
+                            </div>
               <div className="flex items-center justify-end px-6 py-3 gap-2">
-                <button
+                            <button
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm"
-                  onClick={() => handleOpenChatAndGenerate(msg)}
-                >
+                              onClick={() => handleOpenChatAndGenerate(msg)}
+                            >
                   Generate Reply
-                </button>
+                            </button>
               </div>
-            </div>
-          ))}
-        </div>
+                          </div>
+                        ))}
+                      </div>
         {/* Chat Drawer remains as implemented, opens when handleOpenChatAndGenerate is called */}
         {/* Preferences */}
         <div className="mb-16 mt-16">
@@ -998,32 +962,96 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                 placeholder="e.g. Best regards, John Doe"
               />
               <span className="text-xs text-blue-400 mt-1">This will appear at the end of your emails.</span>
-              <label className="text-xs text-blue-200 font-semibold mt-2">Handwritten Signature (optional)</label>
-              <button
-                type="button"
-                className="bg-blue-800 hover:bg-blue-900 text-white px-3 py-2 rounded-lg font-semibold shadow-sm mt-1 text-xs"
-                onClick={() => signatureImageInputRef.current?.click()}
-              >
-                Upload Handwritten Signature
-              </button>
-              <input
-                type="file"
-                accept="image/*"
-                ref={signatureImageInputRef}
-                onChange={handleSignatureImageUpload}
-                className="hidden"
-              />
-              <span className="text-xs text-blue-400 mt-1">Add a scanned or photographed signature for a personal touch.</span>
-              {signatureImage && (
-                <div className="mt-2">
-                  <span className="text-xs text-blue-300">Preview:</span>
-                  <img src={signatureImage} alt="Signature Preview" className="mt-1 max-h-16 rounded shadow border border-blue-900" />
-                </div>
-              )}
+              <label className="text-xs text-blue-200 font-semibold mb-1">Signature Image</label>
+              <input type="file" accept="image/*" onChange={handleSignatureImageUpload} className="text-xs text-blue-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-900 file:text-blue-200 hover:file:bg-blue-800" />
             </div>
           </div>
         </div>
-        {/* Custom Response Dialog */}
+        {/* Phase Edit Modal */}
+        {editPhasesOpen && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+            <div className="bg-gray-900 rounded-xl p-8 w-full max-w-md border border-blue-900 shadow-xl relative">
+              <button onClick={() => setEditPhasesOpen(false)} className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-800">
+                <XMarkIcon className="h-6 w-6 text-gray-400" />
+              </button>
+              <h2 className="text-xl font-bold mb-4 text-blue-200">Edit Project Phases</h2>
+              <div className="flex flex-col gap-3">
+                {phasesDraft.map((phase, index) => (
+                  <input
+                    key={index}
+                    value={phase}
+                    onChange={e => {
+                      const newDraft = [...phasesDraft];
+                      newDraft[index] = e.target.value;
+                      setPhasesDraft(newDraft);
+                    }}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-400"
+                  />
+                ))}
+              </div>
+              <button onClick={() => setPhasesDraft([...phasesDraft, 'New Phase'])} className="mt-4 text-sm text-blue-300 hover:text-blue-100">+ Add Phase</button>
+              {phasesError && <div className="text-red-400 mt-3 text-sm">{phasesError}</div>}
+              <div className="mt-6 flex justify-end gap-3">
+                <button onClick={() => setEditPhasesOpen(false)} className="px-5 py-2 rounded-lg text-white hover:bg-gray-800">Cancel</button>
+                <button onClick={handleSavePhases} disabled={editLoading} className="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2 rounded-lg font-semibold">
+                  {editLoading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Payment & Invoicing */}
+        <div className="mb-16 mt-16">
+          <h2 className="text-lg font-bold text-blue-200 mb-3">Payment & Invoicing</h2>
+          <div className="bg-gray-800 rounded-xl p-8 border border-blue-900">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="flex flex-col gap-4">
+                <label className="text-xs text-blue-200 font-semibold mb-1">Total Project Amount ($)</label>
+                <input
+                  type="number"
+                  value={totalAmount}
+                  onChange={e => setTotalAmount(parseFloat(e.target.value) || 0)}
+                  onBlur={handlePaymentUpdate}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-white focus:ring-2 focus:ring-blue-400"
+                  placeholder="e.g. 5000"
+                />
+              </div>
+              <div className="flex flex-col gap-4">
+                <label className="text-xs text-blue-200 font-semibold mb-1">Advance Paid ($)</label>
+                <input
+                  type="number"
+                  value={advancePaid}
+                  onChange={e => setAdvancePaid(parseFloat(e.target.value) || 0)}
+                  onBlur={handlePaymentUpdate}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-white focus:ring-2 focus:ring-blue-400"
+                  placeholder="e.g. 1000"
+                />
+              </div>
+              <div className="flex flex-col gap-4">
+                <label className="text-xs text-blue-200 font-semibold mb-1">Payment Due Date</label>
+                <input
+                  type="date"
+                  value={paymentDueDate || ''}
+                  onChange={e => setPaymentDueDate(e.target.value)}
+                  onBlur={handlePaymentUpdate}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-white focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+            </div>
+            <div className="mt-8 pt-6 border-t border-gray-700 flex justify-between items-center">
+              <div>
+                <div className="text-sm text-blue-200">Amount Left to Pay:</div>
+                <div className="text-3xl font-bold text-white">${amountLeft}</div>
+              </div>
+              <div>
+                <div className="text-sm text-blue-200">Payment Status:</div>
+                <div className={`text-lg font-bold px-4 py-1 rounded-full ${paymentStatus === 'complete' ? 'bg-green-800 text-green-200' : 'bg-yellow-800 text-yellow-200'}`}>
+                  {paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <ResponseDialog
           isOpen={showCustomResponse}
           onClose={() => setShowCustomResponse(false)}
@@ -1056,156 +1084,9 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         )}
       </div>
       {/* Payment Status Section */}
-      <div className="max-w-3xl mx-auto mt-8 mb-8">
-        <div className="bg-gray-900/90 rounded-xl shadow-md p-6 border border-blue-900 mb-6">
-          <h2 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
-            Payment Status
-            {paymentStatus === 'complete' ? (
-              <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-400 to-green-600 text-white shadow-md border border-green-500">Paid in Full</span>
-            ) : (
-              <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-400 to-yellow-600 text-yellow-900 shadow-md border border-yellow-400">Pending</span>
-            )}
-          </h2>
-          {paymentDueReminder}
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
-              <label className="block text-blue-200 mb-1">Total Amount</label>
-              <input
-                type="number"
-                min={0}
-                className="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
-                value={totalAmount}
-                onChange={e => setTotalAmount(Number(e.target.value))}
-                placeholder="Total project amount"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-blue-200 mb-1">Advance Paid</label>
-              <input
-                type="number"
-                min={0}
-                className="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
-                value={advancePaid}
-                onChange={e => setAdvancePaid(Number(e.target.value))}
-                placeholder="Advance received"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-blue-200 mb-1">Amount Left</label>
-              <input
-                type="number"
-                className="w-full border px-4 py-2 rounded-lg shadow-sm text-white border-gray-700 bg-gray-800 cursor-not-allowed opacity-70"
-                value={amountLeft}
-                readOnly
-                tabIndex={-1}
-                aria-readonly
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-blue-200 mb-1">Payment Due Date</label>
-              <input
-                type="date"
-                className="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
-                value={paymentDueDate ? paymentDueDate.slice(0, 10) : ''}
-                onChange={e => setPaymentDueDate(e.target.value ? new Date(e.target.value).toISOString() : null)}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <button
-                className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg font-semibold shadow-sm disabled:opacity-50 mt-6"
-                onClick={handlePaymentUpdate}
-                disabled={paymentStatus === 'complete' || (advancePaid < 0 || totalAmount < 0 || advancePaid > totalAmount)}
-                title={advancePaid > totalAmount ? 'Advance cannot exceed Total' : ''}
-              >
-                {paymentStatus === 'complete' ? 'Paid' : 'Save Payment'}
-              </button>
-            </div>
-          </div>
-          {advancePaid > totalAmount && (
-            <div className="text-yellow-300 mt-2 text-sm">Advance cannot exceed Total Amount.</div>
-          )}
-        </div>
+      <div className="max-w-3xl mx-auto mb-16">
+        {/* ... existing payment section content ... */}
       </div>
-      {/* Main Content: Phase History */}
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-gray-900 rounded-xl shadow-md p-6 flex flex-col border border-gray-700">
-          <div className="font-semibold mb-3 flex items-center gap-2 text-blue-300"><ClockIcon className="h-5 w-5" /> Phase History</div>
-          <ul className="space-y-4">
-            {(project.phaseHistory ?? []).map((ph: { id: string; phase: string; timestamp: string | Date }, idx: number) => (
-              <li key={`${ph.id}-${idx}`} className="flex items-center gap-3">
-                <div className={`h-3 w-3 rounded-full ${idx === 0 ? 'bg-blue-600' : 'bg-green-400'}`}></div>
-                <div>
-                  <div className="font-semibold text-sm text-white">{ph.phase}</div>
-                  <div className="text-xs text-gray-400">{new Date(ph.timestamp).toLocaleString()}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <button
-            onClick={handleAdvance}
-            className="mt-8 bg-yellow-700 hover:bg-yellow-800 transition text-white px-4 py-2 rounded-lg font-semibold shadow-sm disabled:opacity-50"
-            disabled={advancing || project.currentPhase === 'DELIVERY'}
-          >
-            {advancing ? 'Advancing...' : 'Manual Phase Advance'}
-          </button>
-        </div>
-      </div>
-      {editPhasesOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-          <div className="bg-gray-900 rounded-xl p-8 w-full max-w-md border border-blue-900 relative">
-            <button className="absolute top-3 right-3 p-2 rounded hover:bg-gray-800" onClick={() => setEditPhasesOpen(false)} aria-label="Close">
-              <XMarkIcon className="h-6 w-6 text-gray-400" />
-            </button>
-            <h3 className="text-lg font-bold mb-4 text-blue-200">Edit Project Phases</h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (phasesDraft.length < 1 || phasesDraft.length > 6 || phasesDraft.some(p => !p.trim())) {
-                setPhasesError('Enter 1-6 non-empty phases.');
-                return;
-              }
-              setPhasesError(null);
-              const user = auth.currentUser;
-              if (!user) return;
-              const token = await user.getIdToken();
-              const res = await fetch(`/api/projects/${project.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ phases: phasesDraft }),
-              });
-              if (res.ok) {
-                mutate(); // Re-fetch project and update SWR cache
-                setEditPhasesOpen(false);
-              } else {
-                setPhasesError('Failed to update phases.');
-              }
-            }}>
-              <div className="space-y-2 mb-4">
-                {phasesDraft.map((phase, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
-                    <input
-                      className="flex-1 border px-3 py-2 rounded bg-gray-800 text-white border-gray-700"
-                      value={phase}
-                      onChange={e => {
-                        const arr = [...phasesDraft];
-                        arr[idx] = e.target.value;
-                        setPhasesDraft(arr);
-                      }}
-                      maxLength={32}
-                      required
-                    />
-                    <button type="button" className="text-red-400 hover:text-red-600" onClick={() => setPhasesDraft(phasesDraft.filter((_, i) => i !== idx))} disabled={phasesDraft.length <= 1}>&times;</button>
-                  </div>
-                ))}
-                {phasesDraft.length < 6 && (
-                  <button type="button" className="text-xs text-blue-300 hover:underline" onClick={() => setPhasesDraft([...phasesDraft, ''])}>+ Add Phase</button>
-                )}
-              </div>
-              {phasesError && <div className="text-red-400 mb-2 text-sm">{phasesError}</div>}
-              <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded font-semibold mt-2">Save Phases</button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
-} 
+}

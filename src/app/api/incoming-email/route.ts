@@ -21,7 +21,7 @@ async function findProjectByClientEmail(email: string): Promise<Project | null> 
 }
 
 export async function POST(req: NextRequest) {
-  const { from, subject, body } = await req.json();
+  const { from, subject, body, gmailId } = await req.json();
   if (!from || !body) {
     return NextResponse.json({ error: 'Missing from or body' }, { status: 400 });
   }
@@ -35,12 +35,13 @@ export async function POST(req: NextRequest) {
     body: `Subject: ${subject || ''}\n${body}`,
     from: 'CLIENT',
     createdAt: new Date(),
+    ...(gmailId ? { gmailId } : {}),
   });
   // Get Gemini AI reply
   const geminiRes = await getGeminiReply(body);
   // Store AI reply
   await db.collection('projects').doc(project.id).collection('clientMessages').add({
-    body: geminiRes.replyText,
+    body: geminiRes.body,
     from: 'AI',
     createdAt: new Date(),
   });
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
   //   from: 'studio@digipod.ai',
   //   to: from,
   //   subject: `Re: ${subject}`,
-  //   text: geminiRes.replyText,
+  //   text: geminiRes.body,
   // });
-  return NextResponse.json({ success: true, aiReply: geminiRes.replyText, trigger: geminiRes.trigger, project: updatedProject });
+  return NextResponse.json({ success: true, aiReply: geminiRes.body, trigger: geminiRes.trigger, project: updatedProject });
 } 

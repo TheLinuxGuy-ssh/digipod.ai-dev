@@ -367,7 +367,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
               onClick={e => { e.stopPropagation(); handleGmailDisconnect(); }}
             >
               <XMarkIcon className="h-4 w-4 text-red-300" />
-              Disconnect Google Calendar
+              Disconnect Google
             </button>
           )}
           {/* Only show IMAP/SMTP mailboxes */}

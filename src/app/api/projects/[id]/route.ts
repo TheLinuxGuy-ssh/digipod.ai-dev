@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
+import { getUserIdFromRequest } from '@/lib/getUserFromRequest';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,62 @@ export async function GET(
   const phaseHistory = phaseHistorySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   const clientMessages = clientMessagesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   return NextResponse.json({ ...project, phaseHistory, clientMessages });
+}
+
+// DELETE /api/projects/[id] - Delete project
+export async function DELETE(
+  req: NextRequest,
+  ctx: { params: { id: string } } | { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  try {
+    // Verify authentication
+    const userId = await getUserIdFromRequest(req);
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const params = isPromise(ctx.params) ? await ctx.params : ctx.params;
+    const { id } = params;
+
+    // Check if project exists and belongs to the user
+    const projectRef = db.collection('projects').doc(id);
+    const projectSnap = await projectRef.get();
+    
+    if (!projectSnap.exists) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const projectData = projectSnap.data();
+    if (projectData?.userId !== userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Delete subcollections first
+    const batch = db.batch();
+    
+    // Delete phaseHistory subcollection
+    const phaseHistorySnap = await projectRef.collection('phaseHistory').get();
+    phaseHistorySnap.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    // Delete clientMessages subcollection
+    const clientMessagesSnap = await projectRef.collection('clientMessages').get();
+    clientMessagesSnap.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    // Delete the main project document
+    batch.delete(projectRef);
+
+    // Execute the batch
+    await batch.commit();
+
+    return NextResponse.json({ success: true, message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error('DELETE /api/projects/[id]: Error deleting project', error);
+    return NextResponse.json({ error: 'Failed to delete project' }, { status: 500 });
+  }
 }
 
 // PATCH /api/projects/[id] - Update project clientEmail

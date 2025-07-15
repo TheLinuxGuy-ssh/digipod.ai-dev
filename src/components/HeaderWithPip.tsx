@@ -4,12 +4,12 @@ import PipAvatar from './PipAvatar';
 import Image from 'next/image';
 
 export default function HeaderWithPip() {
-  const [hoursSaved, setHoursSaved] = React.useState(0);
+  const [minutesSaved, setMinutesSaved] = React.useState(0);
   const [focusMode, setFocusMode] = React.useState(false);
 
   useEffect(() => {
-    const saved = parseInt(localStorage.getItem('digipod-hours-saved') || '0', 10);
-    setHoursSaved(saved);
+    const saved = parseInt(localStorage.getItem('digipod-minutes-saved') || '0', 10);
+    setMinutesSaved(saved);
     setFocusMode(localStorage.getItem('digipod-focus-mode') === 'on');
   }, []);
 
@@ -19,7 +19,7 @@ export default function HeaderWithPip() {
         <Image src="/digilogo.png" alt="Digipod Logo" width={120} height={40} />
       </div>
       <div className="ml-auto flex items-center gap-4">
-        <PipAvatar hoursSaved={hoursSaved} focusMode={focusMode} />
+        <PipAvatar minutesSaved={minutesSaved} focusMode={focusMode} />
       </div>
     </header>
   );

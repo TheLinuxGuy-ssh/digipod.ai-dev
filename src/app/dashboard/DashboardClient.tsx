@@ -1,0 +1,1619 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { PlusIcon, FolderIcon, EllipsisVerticalIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import PipAvatar from '@/components/PipAvatar';
+import AntiHustleMeter from '@/components/AntiHustleMeter';
+import useSWR from 'swr';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { SparklesIcon, CalendarDaysIcon, EnvelopeOpenIcon } from '@heroicons/react/24/solid';
+import './calendar-dashboard.css'; // Custom styles for react-big-calendar
+import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { enUS } from 'date-fns/locale/en-US';
+import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
+import { incrementMinutesSaved } from '../../lib/hustleMeter';
+
+console.log('Firebase config (dashboard):', auth.app.options);
+
+interface Project {
+  id: string;
+  name: string;
+  clientEmail?: string;
+  userId: string;
+  currentPhase: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  phaseHistory?: { id: string; phase: string; timestamp: string | Date }[];
+  clientMessages?: { id: string; body: string; from: string; createdAt: string | Date }[];
+  phases?: string[]; // Added for edit functionality
+}
+
+interface DashboardEmail {
+  id: string;
+  projectId: string;
+  projectName: string;
+  clientEmail?: string;
+  from: string;
+  subject: string;
+  body: string;
+  closing: string;
+  signature: string;
+  status: string;
+  createdAt: FirebaseFirestore.Timestamp | Date | string;
+  parentId?: string;
+  trigger?: string;
+  gmailId?: string; // Added for Gmail ID
+}
+
+const fetcher = async (url: string) => {
+  const user = auth.currentUser;
+  if (!user) return [];
+  const token = await user.getIdToken();
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+  return data;
+};
+
+async function createProject(name: string, clientEmail: string) {
+  const user = auth.currentUser;
+  if (!user) return null;
+  const token = await user.getIdToken();
+  const res = await fetch('/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ name, clientEmail }),
+  });
+  if (!res.ok) {
+    // Optionally, show a toast or log the error
+    return null;
+  }
+  const data = await res.json();
+  if (!data || !data.id) return null;
+  return data;
+}
+
+async function fetchGmailUser() {
+  const user = auth.currentUser;
+  if (!user) return null;
+  const token = await user.getIdToken();
+  const res = await fetch('/api/gmail-user', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+// Helper to fetch with auth token
+async function fetchWithAuth(url: string): Promise<unknown> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not authenticated');
+  const token = await user.getIdToken();
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  return res.json();
+}
+
+function ProjectCard({ project, onDelete, onEdit }: { project: Project, onDelete: (id: string) => void, onEdit: (id: string) => void }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
+  // Use the same date parsing logic as elsewhere
+  const getDateFromEmail = (dateVal: any): Date => {
+    if (dateVal && typeof dateVal === 'object' && typeof dateVal.toDate === 'function') {
+      return dateVal.toDate();
+    }
+    if (dateVal instanceof Date) return dateVal;
+    if (typeof dateVal === 'string') return new Date(dateVal);
+    return new Date();
+  };
+  return (
+    <div
+      className="relative rounded-2xl shadow-xl p-8 border border-blue-200/30 backdrop-blur-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-200/60 group cursor-pointer bg-white/10 overflow-hidden"
+      onClick={() => router.push(`/project/${project.id}`)}
+    >
+      <div className="absolute inset-0 pointer-events-none rounded-2xl" style={{background: 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(180,200,255,0.10) 100%)', boxShadow: '0 4px 32px 0 rgba(31,38,135,0.10)'}} />
+      {/* Dots menu */}
+      <div className="absolute top-4 right-4 z-20">
+        <button onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }} className="p-2 rounded-full hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          <EllipsisVerticalIcon className="h-6 w-6 text-white" />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 mt-2 w-32 bg-gray-900 border border-gray-700 rounded-lg shadow-lg py-1 z-30">
+            <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-800" onClick={e => { e.stopPropagation(); setMenuOpen(false); onEdit(project.id); }}>
+              Edit
+            </button>
+            <button className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800" onClick={e => { e.stopPropagation(); setMenuOpen(false); onDelete(project.id); }}>
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-3 mb-2 relative z-10">
+        <FolderIcon className="h-6 w-6 text-blue-400 group-hover:text-purple-500 transition-colors animate-float-slow" />
+        <span className="font-semibold text-lg text-white group-hover:text-purple-200 transition-colors">{project.name}</span>
+      </div>
+      <div className="text-blue-100 mb-2 relative z-10">{project.clientEmail ? `Client: ${project.clientEmail}` : 'No client email set'}</div>
+      <div className="flex flex-col gap-2 relative z-10">
+        <span className="text-xs text-blue-200">Created: {getDateFromEmail(project.createdAt).toLocaleString()}</span>
+        <span className="text-xs text-blue-200">Phase: <span className="font-semibold text-blue-300">{project.currentPhase}</span></span>
+      </div>
+      <button
+        className="mt-4 px-4 py-2 rounded-lg text-center font-semibold shadow-md bg-gradient-to-r from-blue-600 to-purple-500 text-white hover:from-purple-500 hover:to-blue-600 transition-all duration-200 focus:ring-2 focus:ring-blue-300 focus:outline-none active:scale-95 relative z-10"
+        onClick={e => { e.stopPropagation(); router.push(`/project/${project.id}`); }}
+      >
+        Open Project
+      </button>
+    </div>
+  );
+}
+
+// Helper for animated expand/collapse
+function ExpandableCard({ expanded, onClick, title, icon, summary, content, loading, gradientClass }: {
+  expanded: boolean;
+  onClick: () => void;
+  title: React.ReactNode;
+  icon: React.ReactNode;
+  summary: React.ReactNode;
+  content: React.ReactNode;
+  loading: boolean;
+  gradientClass: string;
+}) {
+  return (
+    <div
+      tabIndex={0}
+      role="button"
+      aria-label={`Expand ${title}`}
+      className={
+        `${gradientClass} rounded-2xl shadow-xl p-8 flex flex-col items-start min-h-[180px] h-full relative overflow-hidden transition-all duration-300 outline-none focus:ring-4 focus:ring-blue-400/50 hover:scale-[1.02] hover:shadow-2xl border-2 border-transparent hover:border-blue-400 ${expanded ? 'ring-2 ring-blue-300/30 border-blue-400' : ''} ${loading ? 'animate-pulse' : ''}`
+      }
+      style={{ minHeight: 180, height: '100%', cursor: 'pointer' }}
+      onClick={onClick}
+      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onClick()}
+    >
+      {/* Loading overlay */}
+      {loading && (
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-blue-300 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-blue-200 text-sm font-medium">Loading...</span>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex items-center w-full mb-2 select-none">
+        {icon}
+        <h2 className="text-2xl font-extrabold text-white ml-2 flex-1 drop-shadow-lg tracking-tight">{title}</h2>
+        <ChevronDownIcon
+          className={`h-6 w-6 text-blue-100 ml-2 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+        />
+      </div>
+      {loading ? (
+        <div className="w-full space-y-3">
+          {/* Skeleton loading for summary */}
+          <div className="space-y-2">
+            <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '80%' }}></div>
+            <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '60%' }}></div>
+          </div>
+          {/* Skeleton loading for content */}
+          <div className="space-y-3 mt-4">
+            <div className="h-6 bg-blue-900/40 rounded animate-pulse"></div>
+            <div className="h-6 bg-blue-900/40 rounded animate-pulse" style={{ width: '90%' }}></div>
+            <div className="h-6 bg-blue-900/40 rounded animate-pulse" style={{ width: '70%' }}></div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className={`transition-all duration-300 ${expanded ? 'opacity-0 h-0 pointer-events-none' : 'opacity-100 h-auto'}`}>{summary}</div>
+          <div
+            className={`transition-all duration-500 ease-in-out ${expanded ? 'opacity-100 max-h-[320px] mt-2' : 'opacity-0 max-h-0 pointer-events-none'} w-full`}
+            style={{ overflowY: expanded ? 'auto' : 'hidden' }}
+          >
+            {content}
+          </div>
+        </>
+      )}
+      <span className="absolute top-4 right-4 text-xs text-blue-100 bg-blue-900/80 px-2 py-1 rounded-lg shadow-md select-none">{expanded ? 'Click to collapse' : 'Click to expand'}</span>
+    </div>
+  );
+}
+
+
+
+export default function DashboardClient({ summary }: { summary?: unknown }) {
+  const [name, setName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [minutesSaved, setMinutesSaved] = useState(0);
+  const [focusMode, setFocusMode] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
+  const [, forceRerender] = useState(0);
+  const router = useRouter();
+  const [editProject, setEditProject] = useState<Project | null>(null);
+  const [editPhases, setEditPhases] = useState<string[]>([]);
+  const [editName, setEditName] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const shouldFetchProjects = authReady && !!auth.currentUser;
+  const { data: projectsData = [], mutate } = useSWR(
+    shouldFetchProjects ? '/api/projects' : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
+  // AI drafts state
+  const [aiDraftsData, setAiDraftsData] = useState<{ drafts: any[] }>({ drafts: [] });
+  const [loadingDrafts, setLoadingDrafts] = useState(false);
+
+  // New state for AI-powered dashboard sections
+  const [loadingSummary, setLoadingSummary] = useState(true);
+  const [loadingCalendar, setLoadingCalendar] = useState(true);
+  const [loadingTodos, setLoadingTodos] = useState(true);
+  // Add state for expanded cards
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  // Add state for Gmail connection
+  const [selectedDateEvents, setSelectedDateEvents] = useState<{ date: Date; events: { title: string; start: Date; end: Date }[] } | null>(null);
+  // Calendar state (must be at top level)
+  const [calendarEvents, setCalendarEvents] = useState<{ title: string; date: string }[]>([]);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [newEventsCount, setNewEventsCount] = useState(0);
+
+  const [todos, setTodos] = useState<{ task: string; dueDate?: string; type: 'project' | 'calendar'; projectName?: string; confidence?: number }[]>([]);
+
+  // AI Drafts state
+  const [selectedDraft, setSelectedDraft] = useState<any>(null);
+  const [editableDraft, setEditableDraft] = useState<any>(null);
+  const [clientMessages, setClientMessages] = useState<any[]>([]);
+  const [parentEmail, setParentEmail] = useState<any>(null);
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [summaryData, setSummaryData] = useState<any>(null);
+
+  // Helper to toggle card expansion
+  const handleCardToggle = (card: string) => {
+    setExpandedCard(expandedCard === card ? null : card);
+    
+    // Clear notification count when calendar is opened
+    if (card === 'calendar') {
+      setNewEventsCount(0);
+      // Store current timestamp as last seen
+      localStorage.setItem('digipod-last-seen-calendar', Date.now().toString());
+    }
+  };
+
+
+
+  // Helper: group events by date for modal
+  function getEventsForDate(date: Date) {
+    return calendarEvents.filter(ev => {
+      const evDate = new Date(ev.date);
+      return evDate.toDateString() === date.toDateString();
+    });
+  }
+
+  // Helper to get date from Firestore Timestamp, Date, or string
+  const getDateFromEmail = (dateVal: FirebaseFirestore.Timestamp | Date | string): Date => {
+    if (dateVal && typeof dateVal === 'object' && typeof (dateVal as { toDate?: unknown }).toDate === 'function') {
+      return (dateVal as { toDate: () => Date }).toDate();
+    }
+    if (dateVal instanceof Date) return dateVal;
+    if (typeof dateVal === 'string') return new Date(dateVal);
+    return new Date();
+  };
+
+  // Helper function to open draft modal
+  const openDraftModal = (draft: any) => {
+    setSelectedDraft(draft);
+    setEditableDraft({ ...draft });
+  };
+
+  // Helper function to close draft modal
+  const closeDraftModal = () => {
+    setSelectedDraft(null);
+    setEditableDraft(null);
+  };
+
+  // Check if user is authenticated
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setAuthReady(true);
+      console.log('onAuthStateChanged (dashboard) fired. User:', user);
+      if (!user) {
+        // User is not signed in, redirect to signin
+        router.push('/signin');
+      } else {
+        // User is signed in, show dashboard
+        setAuthChecking(false);
+        // No need to fetchProjects here, SWR will handle it
+        fetchGmailUser().then((user: { email?: string, gmailConnected?: boolean } | null) => {
+          if (user && user.email && user.gmailConnected) {
+            setToast(`Gmail connected: ${user.email}`);
+          }
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      const saved = parseInt(localStorage.getItem('digipod-minutes-saved') || '0', 10);
+      setMinutesSaved(saved);
+      setFocusMode(localStorage.getItem('digipod-focus-mode') === 'on');
+    };
+    // Set initial value on mount
+    handleStorage();
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  useEffect(() => {
+    if (toast) {
+      const timeout = setTimeout(() => setToast(null), 3000); // 3 seconds
+      return () => clearTimeout(timeout);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    // Listen for theme change event to force re-render
+    const handler = () => forceRerender(v => v + 1);
+    window.addEventListener('digipod-theme-change', handler);
+    return () => window.removeEventListener('digipod-theme-change', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
+    setLoadingSummary(true); setLoadingCalendar(true); setLoadingTodos(true); setLoadingDrafts(true);
+    // Fetch actionable to-dos, AI drafts, and AI changes summary from backend
+    console.log('Starting API calls for dashboard data...');
+    Promise.all([
+      fetchWithAuth('/api/calendar-events').catch((err) => { console.log('Calendar API error:', err); return err; }),
+      fetchWithAuth('/api/client-todos').catch((err) => { console.log('Todos API error:', err); return err; }),
+      fetchWithAuth('/api/ai-drafts?status=draft&limit=10').catch((err) => { console.log('AI drafts API error:', err); return err; }),
+      fetchWithAuth('/api/dashboard/summary').catch((err) => { console.log('Dashboard summary API error:', err); return err; })
+    ]).then(([calendarData, todosData, aiDraftsData, summaryData]) => {
+      let calendarEventsRaw: { title: string; date: string; description?: string; id?: string; end?: string }[] = [];
+      let todosRaw: { task: string; dueDate?: string; type: 'project' | 'calendar'; projectName?: string; confidence?: number }[] = [];
+
+      if (calendarData && typeof calendarData === 'object' && 'error' in calendarData) {
+        if (calendarData.error === 'Unauthorized') {
+          setCalendarError('You are not logged in or your session expired. Please log in and reconnect Google.');
+          setToast('Google Calendar: Not authorized. Please log in and reconnect.');
+        } else if (calendarData.error === 'No Google token') {
+          setCalendarError('Google account not connected. Please reconnect Google.');
+          setToast('Google Calendar: Not connected. Please reconnect.');
+        } else if (calendarData.error === 'Google Calendar API error') {
+          setCalendarError('Google Calendar API error. Try reconnecting Google.');
+          setToast('Google Calendar: API error. Try reconnecting.');
+        } else {
+          setCalendarError('Failed to load Google Calendar.');
+          setToast('Google Calendar: Failed to load.');
+        }
+        setCalendarEvents([]);
+        setLoadingCalendar(false);
+      } else {
+        calendarEventsRaw = (calendarData as { events?: { title: string; date: string; description?: string; id?: string; end?: string }[] }).events || [];
+        setCalendarEvents(calendarEventsRaw);
+        setCalendarError(null);
+        setLoadingCalendar(false);
+        
+        // Calculate new events count
+        const lastSeenTimestamp = localStorage.getItem('digipod-last-seen-calendar') || '0';
+        const lastSeenDate = new Date(parseInt(lastSeenTimestamp));
+        
+        console.log('Calendar events raw:', calendarEventsRaw);
+        console.log('Last seen timestamp:', lastSeenTimestamp);
+        console.log('Last seen date:', lastSeenDate);
+        
+        // If this is the first visit (lastSeenTimestamp is 0), show all events as new
+        if (lastSeenTimestamp === '0') {
+          console.log('First visit - showing all events as new:', calendarEventsRaw.length);
+          setNewEventsCount(calendarEventsRaw.length);
+        } else {
+          // Otherwise, only show events that are newer than last seen
+          const newEvents = calendarEventsRaw.filter(event => {
+            const eventDate = new Date(event.date);
+            return eventDate > lastSeenDate;
+          });
+          console.log('Subsequent visit - new events count:', newEvents.length);
+          setNewEventsCount(newEvents.length);
+        }
+      }
+
+      if (todosData && typeof todosData === 'object' && 'error' in todosData) {
+        if (todosData.error === 'Unauthorized') {
+          setToast('To-Do list: Not authorized. Please log in.');
+        } else if (todosData.error === 'No Google token') {
+          setToast('To-Do list: Not connected. Please reconnect Google.');
+        } else if (todosData.error === 'Google Calendar API error') {
+          setToast('To-Do list: API error. Try reconnecting.');
+        } else {
+          todosRaw = (todosData as { todos?: { task: string; dueDate?: string; type: 'project' | 'calendar'; projectName?: string; confidence?: number }[] }).todos || [];
+        }
+        setLoadingTodos(false);
+      } else {
+        todosRaw = (todosData as { todos?: { task: string; dueDate?: string; type: 'project' | 'calendar'; projectName?: string; confidence?: number }[] }).todos || [];
+        setLoadingTodos(false);
+      }
+
+      // Combine project/client todos and calendar events
+      const calendarTodos = calendarEventsRaw
+        .filter(ev => {
+          const text = (ev.title + ' ' + (ev.description || '')).toLowerCase();
+          return /call|meeting|zoom|meet/.test(text);
+        })
+        .map(ev => ({
+          task: ev.title,
+          dueDate: ev.date,
+          type: 'calendar' as const,
+        }));
+
+      // Process AI drafts data
+      if (aiDraftsData && typeof aiDraftsData === 'object' && 'error' in aiDraftsData) {
+        setAiDraftsData({ drafts: [] });
+        setLoadingDrafts(false);
+      } else {
+        const draftsData = aiDraftsData as { drafts?: any[] } || { drafts: [] };
+        setAiDraftsData({ drafts: draftsData.drafts || [] });
+        setLoadingDrafts(false);
+      }
+
+      // Process AI changes summary data
+      console.log('Processing summary data:', summaryData);
+      if (summaryData && typeof summaryData === 'object' && 'error' in summaryData) {
+        console.log('Summary data has error:', summaryData.error);
+        setAiSummary("Unable to load AI changes summary.");
+        setLoadingSummary(false);
+      } else {
+        const summaryInfo = summaryData as { summaryText?: string } || {};
+        console.log('Summary info:', summaryInfo);
+        setAiSummary(summaryInfo.summaryText || "No AI changes detected.");
+        setSummaryData(summaryInfo);
+        setLoadingSummary(false);
+      }
+
+      // Extract tasks from AI drafts
+      const draftTasks = (aiDraftsData as any)?.drafts?.filter((draft: any) => draft.status === 'draft')
+        .map((draft: any) => ({
+          task: `Review AI draft: ${draft.subject || 'AI Draft'}`,
+          type: 'project' as const,
+          projectName: draft.clientEmail || 'Client',
+          confidence: 0.7
+        })) || [];
+      
+      // Combine all tasks: backend todos, calendar events, and draft tasks
+      setTodos([...todosRaw, ...calendarTodos, ...draftTasks]);
+    }).catch(() => {
+      setLoadingCalendar(false);
+      setLoadingTodos(false);
+      setLoadingDrafts(false);
+      setLoadingSummary(false);
+      setCalendarError('Failed to load Google Calendar');
+      setToast('Google Calendar: Failed to load.');
+    });
+  }, [authReady]);
+
+  // Check Gmail connection
+  const checkGmailConnection = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      return;
+    }
+    const token = await user.getIdToken();
+    const res = await fetch('/api/gmail-user', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      return;
+    }
+  };
+
+  useEffect(() => {
+    checkGmailConnection();
+  }, [authReady]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const project = await createProject(name, clientEmail);
+    if (project && project.id) {
+      mutate();
+      setName('');
+      setClientEmail('');
+      setToast(`Project "${project.name}" created!`);
+    } else {
+      setToast('Failed to create project. Please try again.');
+    }
+    setLoading(false);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const handleDelete = async (projectId: string) => {
+    // Add confirmation step
+    const project = projectsData.find(p => p.id === projectId);
+    if (!project) return;
+    
+    const confirmed = window.confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`);
+    if (!confirmed) return;
+    
+    const user = auth.currentUser;
+    if (!user) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`/api/projects/${projectId}`, { 
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      mutate();
+      setToast(`Project "${project.name}" deleted successfully.`);
+    } else {
+      const errorData = await res.json().catch(() => ({}));
+      setToast(`Failed to delete project: ${errorData.error || 'Unknown error'}`);
+    }
+  };
+
+  // Edit handler
+  const handleEdit = (projectId: string) => {
+    const project = projectsData.find(p => p.id === projectId);
+    if (!project) return;
+    setEditProject(project);
+    setEditPhases(project.phases && project.phases.length > 0 ? project.phases : ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY']);
+    setEditName(project.name);
+    setEditError(null);
+  };
+
+  // Save handler
+  const handleEditSave = async () => {
+    if (!editProject) return;
+    if (editPhases.length < 1 || editPhases.length > 6 || editPhases.some(p => !p.trim())) {
+      setEditError('Enter 1-6 non-empty phases.');
+      return;
+    }
+    if (!editName.trim()) {
+      setEditError('Project name cannot be empty.');
+      return;
+    }
+    setEditLoading(true);
+    const user = auth.currentUser;
+    if (!user) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`/api/projects/${editProject.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ phases: editPhases, name: editName }),
+    });
+    setEditLoading(false);
+    if (res.ok) {
+      mutate();
+      setEditProject(null);
+    } else {
+      setEditError('Failed to update project.');
+    }
+  };
+
+  const handleApproveDraft = async (email: DashboardEmail) => {
+    if (!email.id) return;
+    const user = auth.currentUser;
+    if (!user) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`/api/emails/${email.id}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        subject: email.subject,
+        body: email.body,
+        closing: email.closing,
+        signature: email.signature
+      }),
+    });
+    if (res.ok) {
+      setToast('Draft approved and sent!');
+      setSelectedDraft(null);
+      setEditableDraft(null);
+      incrementMinutesSaved();
+    } else {
+      setToast('Failed to approve draft.');
+    }
+  };
+
+  const handleDeclineDraft = async (email: DashboardEmail) => {
+    if (!email.id) return;
+    const user = auth.currentUser;
+    if (!user) return;
+    const token = await user.getIdToken();
+    const res = await fetch(`/api/emails/${email.id}/decline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setToast('Draft declined.');
+      setSelectedDraft(null);
+      setEditableDraft(null);
+    } else {
+      setToast('Failed to decline draft.');
+    }
+  };
+
+  // 2. Fetch client messages and parent email when modal opens
+  useEffect(() => {
+    const fetchClientMessages = async () => {
+      if (!selectedDraft || !selectedDraft.projectId) return;
+      const user = auth.currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/projects/${selectedDraft.projectId}/clientMessages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) setClientMessages(data);
+      else setClientMessages([]);
+    };
+    fetchClientMessages();
+
+    // Always fetch parent email directly if parentId exists
+    const fetchParentEmail = async () => {
+      if (!selectedDraft || !selectedDraft.parentId || !selectedDraft.projectId) {
+        setParentEmail(null);
+        return;
+      }
+      const user = auth.currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      try {
+        // First, get the client message using parentId
+        const clientMsgRes = await fetch(`/api/projects/${selectedDraft.projectId}/clientMessages?messageId=${selectedDraft.parentId}`,
+          { headers: { Authorization: `Bearer ${token}` } });
+        const clientMsgData = await clientMsgRes.json();
+        console.log('[DEBUG] fetchParentEmail - client message', {
+          url: `/api/projects/${selectedDraft.projectId}/clientMessages?messageId=${selectedDraft.parentId}`,
+          status: clientMsgRes.status,
+          data: clientMsgData
+        });
+        
+        if (clientMsgRes.ok && Array.isArray(clientMsgData) && clientMsgData.length > 0) {
+          const clientMessage = clientMsgData[0];
+          
+          // If the client message has a gmailId, fetch the original Gmail email
+          if (clientMessage.gmailId) {
+            const gmailRes = await fetch(`/api/gmail/inbox?gmailId=${clientMessage.gmailId}`,
+              { headers: { Authorization: `Bearer ${token}` } });
+            const gmailData = await gmailRes.json();
+            console.log('[DEBUG] fetchParentEmail - Gmail email', {
+              url: `/api/gmail/inbox?gmailId=${clientMessage.gmailId}`,
+              status: gmailRes.status,
+              data: gmailData
+            });
+            
+            if (gmailRes.ok && Array.isArray(gmailData) && gmailData.length > 0) {
+              // Use the original Gmail email
+              setParentEmail(gmailData[0]);
+            } else {
+              // Fallback to client message
+              setParentEmail(clientMessage);
+            }
+          } else {
+            // No gmailId, use the client message
+            setParentEmail(clientMessage);
+          }
+        } else {
+          setParentEmail(null);
+        }
+      } catch (err) {
+        console.error('[DEBUG] fetchParentEmail error', err);
+        setParentEmail(null);
+      }
+    };
+    fetchParentEmail();
+  }, [selectedDraft]);
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const locales = {
+    'en-US': enUS,
+  };
+  const localizer = dateFnsLocalizer({
+    format,
+    parse,
+    startOfWeek: () => startOfWeek(new Date(), { weekStartsOn: 0 }),
+    getDay,
+    locales,
+  });
+
+  return (
+    <main className="flex-1 flex flex-col min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-x-hidden">
+      {/* Animated shimmer overlay */}
+      <div className="pointer-events-none fixed inset-0 z-0 animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" style={{ backgroundSize: '200% 100%' }} />
+      {/* Hero Header */}
+      <section className="w-full mb-12 relative z-10" style={{ background: 'linear-gradient(to right, #23243a, #23243a 60%, #23243a)' }}>
+        <div className="w-full px-20 py-12">
+          <div className="flex flex-row items-center justify-between w-full gap-16">
+            <div className="flex-1 text-left">
+              <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-purple-300 to-blue-200 drop-shadow-lg">Dashboard</h1>
+              <p className="text-lg text-gray-300 font-medium">Welcome back, creative rebel. Your anti-hustle HQ awaits.</p>
+            </div>
+            <div className="flex-1 flex justify-center items-center">
+              {/* Floating Pip Avatar */}
+              <div className="animate-float drop-shadow-xl">
+                <PipAvatar minutesSaved={minutesSaved} focusMode={focusMode} />
+              </div>
+            </div>
+            <div className="flex-1 flex justify-end items-center gap-4">
+              <AntiHustleMeter minutesSaved={minutesSaved} />
+              {/* Calendar Icon */}
+              <div className="relative">
+                <button
+                  onClick={() => handleCardToggle('calendar')}
+                  className="p-3 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  aria-label="Toggle Calendar"
+                >
+                  <CalendarDaysIcon className="h-6 w-6 text-white" />
+                </button>
+                {/* Temporary debug indicator - always visible */}
+                <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center shadow-lg border-2 border-white">
+                  {newEventsCount}
+                </div>
+                {/* Notification Badge */}
+                {newEventsCount > 0 && (
+                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center shadow-lg border-2 border-white">
+                    {newEventsCount > 99 ? '99+' : newEventsCount}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
+          {toast}
+        </div>
+      )}
+      {/* AI-powered Overview Cards */}
+      {/* What's Changed Card - Top with Calendar Icon */}
+      <div className="w-full max-w-3xl mx-auto px-6 mb-8 relative">
+        <ExpandableCard
+          expanded={expandedCard === 'summary'}
+          onClick={() => handleCardToggle('summary')}
+          title="What's Changed"
+          icon={<SparklesIcon className="h-8 w-8 text-yellow-300 animate-float" />}
+          summary={
+            loadingSummary ? (
+              <div className="space-y-2 w-full">
+                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '90%' }}></div>
+                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '75%' }}></div>
+                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '60%' }}></div>
+              </div>
+            ) : (
+              <p className="text-blue-100 text-base truncate w-full">{aiSummary || 'No AI changes detected.'}</p>
+            )
+          }
+          content={
+            loadingSummary ? (
+              <div className="space-y-3 w-full">
+                <div className="h-4 bg-blue-900/40 rounded animate-pulse"></div>
+                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '95%' }}></div>
+                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '80%' }}></div>
+                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '70%' }}></div>
+              </div>
+            ) : (
+              <div className="text-blue-100 text-base mt-2">
+                <p className="mb-4">{aiSummary || 'No AI changes detected.'}</p>
+                {summaryData && typeof summaryData === 'object' && 'summary' in summaryData && (
+                  <div className="bg-blue-900/20 rounded-lg p-4 space-y-2">
+                    <h4 className="font-semibold text-blue-200 mb-3">AI Activity Breakdown (Last 24h):</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex justify-between">
+                        <span>🚀 Phase Advances:</span>
+                        <span className="font-semibold text-green-400">{(summaryData as any).summary?.phaseAdvances || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>📝 New AI Drafts:</span>
+                        <span className="font-semibold text-blue-400">{(summaryData as any).summary?.newDrafts || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>✅ New Todos:</span>
+                        <span className="font-semibold text-yellow-400">{(summaryData as any).summary?.newTodos || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>📧 Processed Emails:</span>
+                        <span className="font-semibold text-purple-400">{(summaryData as any).summary?.processedEmails || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>🤖 AI Activities:</span>
+                        <span className="font-semibold text-cyan-400">{(summaryData as any).summary?.aiActivities || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>⚡ High Impact:</span>
+                        <span className="font-semibold text-red-400">{(summaryData as any).summary?.highImpactChanges || 0}</span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-blue-300 mt-3 pt-3 border-t border-blue-700">
+                      Last updated: {summaryData && typeof summaryData === 'object' && 'lastUpdated' in summaryData 
+                        ? new Date((summaryData as any).lastUpdated).toLocaleString() 
+                        : 'Unknown'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          }
+          loading={loadingSummary}
+          gradientClass="bg-gradient-to-br from-blue-800 via-blue-900 to-purple-900"
+        />
+      </div>
+      {/* Second row: To-Dos, Create Project, Drafted Replies */}
+      <div className="px-4 md:px-12">
+        <div className="flex flex-col items-center justify-center gap-8 md:flex-row md:flex-nowrap md:items-start md:justify-center md:gap-8 mb-12">
+          {/* To-Dos Card */}
+          <div className="flex-1 max-w-sm min-h-[260px] flex flex-col justify-between bg-gradient-to-br from-purple-800 via-blue-900 to-blue-900 rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30">
+            <ExpandableCard
+              expanded={expandedCard === 'todos'}
+              onClick={() => handleCardToggle('todos')}
+              title={
+                <>
+                  Upcoming To-Dos
+                  <div className="text-blue-200 text-xs font-normal mt-1">Stay on top of your most important tasks and deadlines. Here you&apos;ll find your next actionable items, meetings, and project reminders.</div>
+                </>
+              }
+              icon={<ClipboardDocumentCheckIcon className="h-8 w-8 text-green-200 animate-float drop-shadow-lg" />}
+              summary={
+                loadingTodos ? (
+                  <div className="space-y-2 w-full">
+                    <div className="h-4 bg-green-900/40 rounded animate-pulse" style={{ width: '85%' }}></div>
+                    <div className="h-4 bg-green-900/40 rounded animate-pulse" style={{ width: '65%' }}></div>
+                  </div>
+                ) : todos.length === 0 ? (
+                  <div className="text-blue-200 text-sm">No actionable to-dos found.</div>
+                ) : (
+                  <ul className="space-y-2 w-full max-h-16 overflow-hidden">
+                    {todos.slice(0, 2).map((todo, i) => (
+                      <li key={i} className={`bg-white/10 rounded-lg p-3 text-blue-100 shadow flex flex-col border-l-4 ${
+                        todo.type === 'calendar' ? 'border-blue-400' : 
+                        (todo.confidence || 0) > 0.8 ? 'border-red-400' :
+                        (todo.confidence || 0) > 0.6 ? 'border-yellow-400' : 'border-green-400'
+                      }`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-semibold text-green-200 flex-1 truncate">{todo.task}</span>
+                          {todo.type === 'calendar' && (
+                            <span className="text-xs text-blue-400 bg-blue-900/40 px-1 py-0.5 rounded">
+                              📅
+                            </span>
+                          )}
+                          {todo.type === 'project' && (todo.confidence || 0) > 0.8 && (
+                            <span className="text-xs text-red-400 bg-red-900/40 px-1 py-0.5 rounded">
+                              ⚡
+                            </span>
+                          )}
+                          {todo.type === 'project' && (todo.confidence || 0) > 0.6 && (todo.confidence || 0) <= 0.8 && (
+                            <span className="text-xs text-yellow-400 bg-yellow-900/40 px-1 py-0.5 rounded">
+                              ⏰
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1 text-xs">
+                          {todo.dueDate && (
+                            <span className="text-yellow-300 bg-yellow-900/20 px-1 py-0.5 rounded">
+                              {new Date(todo.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                          {todo.type === 'project' && todo.projectName && (
+                            <span className="text-blue-300 bg-blue-900/20 px-1 py-0.5 rounded truncate">
+                              {todo.projectName}
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                    {todos.length > 2 && <li className="text-blue-300">...and {todos.length - 2} more</li>}
+                  </ul>
+                )
+              }
+              content={
+                loadingTodos ? (
+                  <div className="space-y-3 w-full">
+                    {/* Skeleton todo items */}
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="bg-white/10 rounded-lg p-3 border-l-4 border-green-400">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="h-4 bg-green-900/40 rounded animate-pulse flex-1"></div>
+                          <div className="h-4 w-8 bg-green-900/40 rounded animate-pulse"></div>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="h-3 w-16 bg-green-900/40 rounded animate-pulse"></div>
+                          <div className="h-3 w-20 bg-green-900/40 rounded animate-pulse"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : todos.length === 0 ? (
+                  <div className="text-blue-200 text-base">No actionable to-dos found.</div>
+                ) : (
+                  <ul className="space-y-2 w-full max-h-60 overflow-y-auto">
+                    {todos.map((todo, i) => (
+                      <li key={i} className={`bg-white/10 rounded-lg p-3 text-blue-100 shadow flex flex-col border-l-4 ${
+                        todo.type === 'calendar' ? 'border-blue-400' : 
+                        (todo.confidence || 0) > 0.8 ? 'border-red-400' :
+                        (todo.confidence || 0) > 0.6 ? 'border-yellow-400' : 'border-green-400'
+                      }`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-semibold text-green-200 flex-1">{todo.task}</span>
+                          {todo.type === 'calendar' && (
+                            <span className="text-xs text-blue-400 bg-blue-900/40 px-2 py-1 rounded">
+                              📅 Calendar
+                            </span>
+                          )}
+                          {todo.type === 'project' && (todo.confidence || 0) > 0.8 && (
+                            <span className="text-xs text-red-400 bg-red-900/40 px-2 py-1 rounded">
+                              ⚡ Urgent
+                            </span>
+                          )}
+                          {todo.type === 'project' && (todo.confidence || 0) > 0.6 && (todo.confidence || 0) <= 0.8 && (
+                            <span className="text-xs text-yellow-400 bg-yellow-900/40 px-2 py-1 rounded">
+                              ⏰ Due Soon
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                          {todo.dueDate && (
+                            <span className="text-yellow-300 bg-yellow-900/20 px-2 py-1 rounded">
+                              📅 {new Date(todo.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                          {todo.type === 'project' && todo.projectName && (
+                            <span className="text-blue-300 bg-blue-900/20 px-2 py-1 rounded">
+                              📁 {todo.projectName}
+                            </span>
+                          )}
+                          {todo.type === 'project' && typeof todo.confidence === 'number' && !isNaN(todo.confidence) && (
+                            <span className="text-green-400 bg-green-900/20 px-2 py-1 rounded">
+                              🎯 {(todo.confidence * 100).toFixed(0)}% priority
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+              loading={loadingTodos}
+              gradientClass="bg-gradient-to-br from-purple-800 via-blue-900 to-blue-900"
+            />
+          </div>
+          {/* Create New Project Widget */}
+          <div className="flex-[2] min-w-[400px] max-w-3xl min-h-[260px] flex flex-col justify-between">
+            <div className="bg-gray-800/80 rounded-2xl shadow-2xl p-10 border border-blue-900 backdrop-blur-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-900/40 group cursor-pointer flex flex-col justify-between h-full">
+              <h2 className="text-2xl font-bold mb-2 flex items-center gap-2 text-blue-200 group-hover:text-purple-200 transition-colors">
+                <span className="animate-pulse"><PlusIcon className="h-6 w-6" /></span> Create a New Project
+              </h2>
+             
+              <p className="text-gray-400 mb-6">Start a new project for a client. You can set the client email later.</p>
+              <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3 items-center">
+                <input
+                  className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:outline-none bg-gray-900/70 border-gray-700 text-white placeholder-gray-400"
+                  placeholder="New project name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  required
+                />
+                <button
+                  type="submit"
+                  className="transition text-white px-6 py-3 rounded-lg flex items-center gap-2 font-semibold shadow-lg disabled:opacity-50 min-w-[120px] justify-center bg-gradient-to-r from-blue-600 to-purple-500 hover:from-purple-500 hover:to-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none active:scale-95"
+                  disabled={loading}
+                >
+                  <PlusIcon className="h-5 w-5" style={{ color: '#fff', transition: 'color 0.2s' }} />
+                  {loading ? 'Creating...' : 'Create'}
+                </button>
+              </form>
+            </div>
+          </div>
+          {/* Drafted Replies Card */}
+          <div className="flex-1 max-w-sm min-h-[260px] flex flex-col justify-between bg-gradient-to-br from-blue-900/80 to-blue-800/60 rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30">
+            <ExpandableCard
+              expanded={expandedCard === 'drafts'}
+              onClick={() => handleCardToggle('drafts')}
+              title={
+                <>
+                  AI Drafts
+                  <div className="text-blue-200 text-xs font-normal mt-1">I saw some emails in your inbox from your client. I'm ready with the replies.</div>
+                </>
+              }
+              icon={<EnvelopeOpenIcon className="h-8 w-8 text-blue-200 animate-float drop-shadow-lg" />}
+              summary={
+                loadingDrafts ? (
+                  <div className="space-y-2 w-full">
+                    <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '75%' }}></div>
+                    <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '55%' }}></div>
+                  </div>
+                ) : !aiDraftsData || aiDraftsData.drafts?.length === 0 ? (
+                  <div className="text-blue-200 text-sm">No AI drafts ready for review.</div>
+                ) : (
+                  <div className="text-blue-200 text-sm">
+                    {aiDraftsData.drafts?.length || 0} AI draft{(aiDraftsData.drafts?.length || 0) !== 1 ? 's' : ''} ready for review
+                  </div>
+                )
+              }
+              content={
+                loadingDrafts ? (
+                  <div className="space-y-3 w-full">
+                    {/* Skeleton email items */}
+                    {[1, 2].map((i) => (
+                      <div key={i} className="bg-white/10 rounded-lg p-4 border border-blue-200/10">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '60%' }}></div>
+                              <div className="h-4 w-16 bg-blue-900/40 rounded animate-pulse"></div>
+                            </div>
+                            <div className="h-3 bg-blue-900/40 rounded animate-pulse mb-2" style={{ width: '90%' }}></div>
+                            <div className="h-3 bg-blue-900/40 rounded animate-pulse" style={{ width: '70%' }}></div>
+                          </div>
+                          <div className="flex flex-col gap-2 min-w-[120px] items-end">
+                            <div className="h-8 w-20 bg-blue-900/40 rounded animate-pulse"></div>
+                            <div className="h-8 w-16 bg-blue-900/40 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : !aiDraftsData || aiDraftsData.drafts?.length === 0 ? (
+                  <div className="text-blue-200 text-base">
+                    <div className="mb-4">No AI drafts ready for review.</div>
+                    <button
+                      onClick={async () => {
+                        const user = auth.currentUser;
+                        if (!user) return;
+                        const token = await user.getIdToken();
+                        try {
+                          const res = await fetch('/api/email-monitor/status', {
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            console.log('Email monitoring status:', data);
+                            setToast(`Status: ${data.summary.emailSettingsCount} email settings, ${data.summary.clientFiltersCount} client filters, ${data.summary.processedEmailsCount} processed emails, ${data.summary.aiDraftsCount} AI drafts`);
+                          } else {
+                            setToast('Failed to get status');
+                          }
+                        } catch (error) {
+                          setToast('Error getting status');
+                        }
+                      }}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs"
+                    >
+                      Check Status
+                    </button>
+                  </div>
+                ) : (
+                  <ul className="space-y-3 w-full max-h-60 overflow-y-auto">
+                    {aiDraftsData.drafts?.map((draft: any) => (
+                      <li key={draft.id} className="bg-white/10 rounded-lg p-4 border border-blue-200/10 hover:border-blue-300/20 transition-all">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold text-blue-100 truncate">{draft.subject || 'AI Draft'}</span>
+                              <span className="px-2 py-0.5 text-xs rounded bg-blue-700/60 text-blue-200 font-semibold">
+                                {draft.clientEmail || 'Client'}
+                              </span>
+                            </div>
+                            
+                            {/* Clickable preview - shows first 100 chars */}
+                            <div 
+                              className="text-sm text-blue-200 mb-3 cursor-pointer hover:text-blue-100 transition-colors"
+                              onClick={() => {
+                                // Show full content in modal
+                                openDraftModal(draft);
+                              }}
+                            >
+                              {draft.content && draft.content.length > 100 
+                                ? `${draft.content.substring(0, 100)}...` 
+                                : draft.content || 'AI generated draft content'
+                              }
+                              <span className="text-blue-400 text-xs ml-2">(Click to view full)</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 text-xs text-blue-300">
+                              <span>To: {draft.clientEmail || 'Client'}</span>
+                              <span>•</span>
+                              <span>Status: {draft.status}</span>
+                              <span>•</span>
+                              <span>
+                                {draft.createdAt ? new Date(draft.createdAt).toLocaleDateString() : 'Recent'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col gap-2 min-w-[120px] items-end">
+                            {draft.status === 'draft' && (
+                              <>
+                                <button
+                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-semibold text-xs shadow-sm transition-all"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await handleApproveDraft(draft);
+                                    // incrementMinutesSaved is already called in handleApproveDraft
+                                  }}
+                                >
+                                  Approve & Send
+                                </button>
+                                <button
+                                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg font-semibold text-xs shadow-sm transition-all"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    // TODO: Implement decline functionality
+                                    console.log('Decline draft:', draft.id);
+                                  }}
+                                >
+                                  Decline
+                                </button>
+                              </>
+                            )}
+                            {draft.status === 'approved' && (
+                              <span className="text-green-400 text-xs font-semibold px-2 py-1 bg-green-900/40 rounded">
+                                Sent ✓
+                              </span>
+                            )}
+                            {draft.status === 'declined' && (
+                              <span className="text-red-400 text-xs font-semibold px-2 py-1 bg-red-900/40 rounded">
+                                Declined ✗
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+              loading={loadingDrafts}
+              gradientClass="bg-gradient-to-br from-blue-900/80 to-blue-800/60"
+            />
+          </div>
+        </div>
+      </div>
+      {/* Calendar Popup Modal */}
+      {expandedCard === 'calendar' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-900 rounded-xl p-8 w-full max-w-6xl border border-blue-900 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+            <button 
+              className="absolute top-4 right-4 p-2 rounded hover:bg-gray-800 transition-colors" 
+              onClick={() => handleCardToggle('calendar')} 
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-gray-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <h3 className="text-2xl font-bold text-blue-200">Google Calendar</h3>
+                <CalendarDaysIcon className="h-8 w-8 text-blue-100 animate-float drop-shadow-lg" />
+              </div>
+              
+              {calendarError ? (
+                <div className="text-red-400 text-sm flex flex-col gap-2 mb-4">
+                  <span>{calendarError}</span>
+                  <a href="/api/auth/google" className="inline-block bg-blue-700 hover:bg-blue-800 text-white px-3 py-1 rounded mt-1 text-xs font-semibold">Reconnect Google</a>
+                </div>
+              ) : (
+                <p className="text-blue-200 text-sm mb-4">Your full calendar is below. Click any day to see all events for that day.</p>
+              )}
+            </div>
+            
+            {loadingCalendar ? (
+              <div className="w-full space-y-3">
+                {/* Skeleton calendar */}
+                <div className="h-8 bg-blue-900/40 rounded animate-pulse mb-4"></div>
+                <div className="grid grid-cols-7 gap-2">
+                  {Array.from({ length: 35 }).map((_, i) => (
+                    <div key={i} className="h-12 bg-blue-900/40 rounded animate-pulse"></div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="w-full h-[600px]">
+                <BigCalendar
+                  localizer={localizer}
+                  events={calendarEvents.map(ev => ({
+                    title: ev.title,
+                    start: new Date(ev.date),
+                    end: new Date(ev.date),
+                    allDay: true,
+                  }))}
+                  startAccessor="start"
+                  endAccessor="end"
+                  style={{ height: 600, background: 'rgba(30,41,59,0.97)', borderRadius: '1.5rem', color: '#fff', fontFamily: 'Inter, sans-serif', boxShadow: '0 8px 32px 0 rgba(31,38,135,0.13)' }}
+                  views={['month', 'week', 'day']}
+                  popup
+                  selectable
+                  onSelectSlot={(slotInfo) => {
+                    const slotDate = slotInfo.start;
+                    const eventsForDate = getEventsForDate(slotDate);
+                    setSelectedDateEvents({ date: slotDate, events: eventsForDate.map(ev => ({
+                      title: ev.title,
+                      start: new Date(ev.date),
+                      end: new Date(ev.date),
+                    })) });
+                  }}
+                  components={{
+                    event: ({ event }) => (
+                      <div className="custom-calendar-event">
+                        <span className="font-semibold text-blue-200">{event.title}</span>
+                      </div>
+                    ),
+                    toolbar: (toolbarProps) => (
+                      <div className="custom-calendar-toolbar flex items-center justify-between mb-2 px-2 py-1 rounded-lg bg-blue-900/60">
+                        <div className="flex gap-2">
+                          <button className={`calendar-btn ${toolbarProps.view === 'month' ? 'active' : ''}`} onClick={() => toolbarProps.onView('month')}>Month</button>
+                          <button className={`calendar-btn ${toolbarProps.view === 'week' ? 'active' : ''}`} onClick={() => toolbarProps.onView('week')}>Week</button>
+                          <button className={`calendar-btn ${toolbarProps.view === 'day' ? 'active' : ''}`} onClick={() => toolbarProps.onView('day')}>Day</button>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <button className="calendar-btn" onClick={() => toolbarProps.onNavigate('PREV')}>&lt;</button>
+                          <span className="font-bold text-blue-100 text-lg">{toolbarProps.label}</span>
+                          <button className="calendar-btn" onClick={() => toolbarProps.onNavigate('NEXT')}> &gt; </button>
+                        </div>
+                      </div>
+                    )
+                  }}
+                  eventPropGetter={() => ({
+                    style: {
+                      background: 'linear-gradient(90deg, #6366f1 0%, #a5b4fc 100%)',
+                      borderRadius: '0.75rem',
+                      color: '#fff',
+                      border: 'none',
+                      boxShadow: '0 2px 8px 0 rgba(99,102,241,0.15)',
+                      padding: '2px 8px',
+                      fontWeight: 600,
+                      fontSize: '0.95rem',
+                      transition: 'box-shadow 0.2s',
+                    },
+                    className: 'calendar-event-hover',
+                  })}
+                />
+              </div>
+            )}
+            
+            {/* Modal for selected date events */}
+            {selectedDateEvents && (
+              <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-gray-900 rounded-xl p-8 w-full max-w-md border border-blue-900 relative shadow-2xl">
+                  <button className="absolute top-3 right-3 p-2 rounded hover:bg-gray-800" onClick={() => setSelectedDateEvents(null)} aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-gray-400">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <h3 className="text-lg font-bold mb-4 text-blue-200">Events for {selectedDateEvents.date.toLocaleDateString()}</h3>
+                  {selectedDateEvents.events.length === 0 ? (
+                    <div className="text-blue-100">No events scheduled for this day.</div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {selectedDateEvents.events.map((ev, idx) => (
+                        <li key={idx} className="bg-blue-900/60 rounded-lg p-4 shadow text-blue-100 flex flex-col">
+                          <span className="font-semibold text-blue-200">{ev.title}</span>
+                          <span className="text-xs text-blue-300 mt-1">{ev.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Content */}
+      <div className="flex-1 max-w-5xl mx-auto px-6">
+        {/* Projects Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-white mb-4 flex items-center gap-3">
+            <FolderIcon className="h-8 w-8 text-blue-400" />
+            Your Projects
+          </h2>
+          <p className="text-gray-300 text-lg">Manage and track all your client projects</p>
+        </div>
+        {/* Projects Grid */}
+        <div className={editProject ? 'transition-all duration-300 filter blur-md pointer-events-none select-none' : ''}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {Array.isArray(projectsData) && projectsData.map((project, idx) => (
+              <ProjectCard
+                key={project.id || idx}
+                project={project}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+              />
+            ))}
+            {Array.isArray(projectsData) && projectsData.length === 0 && (
+              <div className="col-span-full text-center text-gray-400 py-16">
+                <div className="mb-4">
+                  <FolderIcon className="h-12 w-12 mx-auto text-gray-200 animate-float-slow" />
+                </div>
+                No projects yet. Create your first project!
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {/* Edit Project Modal */}
+      {editProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/10">
+          <div className="bg-gray-900 rounded-xl p-8 w-full max-w-md border border-blue-900 relative">
+            <button className="absolute top-3 right-3 p-2 rounded hover:bg-gray-800" onClick={() => setEditProject(null)} aria-label="Close">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-gray-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 className="text-lg font-bold mb-4 text-blue-200">Edit Project</h3>
+            <form onSubmit={e => { e.preventDefault(); handleEditSave(); }}>
+              <div className="mb-4">
+                <label className="block text-blue-100 mb-1">Project Name</label>
+                <input
+                  className="w-full border px-3 py-2 rounded bg-gray-800 text-white border-gray-700"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  maxLength={64}
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-blue-100 mb-1">Phases</label>
+                <DragDropContext
+                  onDragEnd={(result: DropResult) => {
+                    if (!result.destination) return;
+                    const reordered = Array.from(editPhases);
+                    const [removed] = reordered.splice(result.source.index, 1);
+                    reordered.splice(result.destination.index, 0, removed);
+                    setEditPhases(reordered);
+                  }}
+                >
+                  <Droppable droppableId="phases-list">
+                    {(provided) => (
+                      <div className="space-y-2" ref={provided.innerRef} {...provided.droppableProps}>
+                        {editPhases.map((phase, idx) => (
+                          <Draggable key={idx} draggableId={String(idx)} index={idx}>
+                            {(dragProvided, dragSnapshot) => (
+                              <div
+                                className={`flex gap-2 items-center bg-gray-800 rounded ${dragSnapshot.isDragging ? 'ring-2 ring-blue-400' : ''}`}
+                                ref={dragProvided.innerRef}
+                                {...dragProvided.draggableProps}
+                                {...dragProvided.dragHandleProps}
+                              >
+                                <span className="cursor-move text-blue-300 font-bold px-2">≡</span>
+                                <input
+                                  className="flex-1 border px-3 py-2 rounded bg-gray-800 text-white border-gray-700"
+                                  value={phase}
+                                  onChange={e => {
+                                    const arr = [...editPhases];
+                                    arr[idx] = e.target.value;
+                                    setEditPhases(arr);
+                                  }}
+                                  maxLength={32}
+                                  required
+                                />
+                                <button type="button" className="text-red-400 hover:text-red-600" onClick={() => setEditPhases(editPhases.filter((_, i) => i !== idx))} disabled={editPhases.length <= 1}>&times;</button>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {editPhases.length < 6 && (
+                          <button type="button" className="text-xs text-blue-300 hover:underline" onClick={() => setEditPhases([...editPhases, ''])}>+ Add Phase</button>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+              </div>
+              {editError && <div className="text-red-400 mb-2 text-sm">{editError}</div>}
+              <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded font-semibold mt-2" disabled={editLoading}>{editLoading ? 'Saving...' : 'Save Changes'}</button>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Draft Email Modal */}
+      {selectedDraft && editableDraft && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-900 rounded-xl p-8 w-full max-w-2xl border border-blue-900 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+            <button 
+              className="absolute top-4 right-4 p-2 rounded hover:bg-gray-800 transition-colors" 
+              onClick={closeDraftModal} 
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6 text-gray-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <h3 className="text-xl font-bold text-blue-200">Edit Email Draft</h3>
+                <span className="px-3 py-1 text-xs rounded bg-blue-700/60 text-blue-200 font-semibold">
+                  {selectedDraft.projectName}
+                </span>
+              </div>
+              
+              {/* Recipient Information */}
+              <div className="mb-4 p-3 bg-blue-900/40 rounded-lg border border-blue-700/50">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-blue-300 font-semibold">To:</span>
+                  <span className="text-blue-100">
+                    {selectedDraft.clientEmail || 'No client email set'}
+                  </span>
+                  {!selectedDraft.clientEmail && (
+                    <span className="text-yellow-400 text-xs">(Please set client email in project settings)</span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-blue-100 text-sm font-semibold mb-1">Subject:</label>
+                  <input
+                    type="text"
+                    value={editableDraft.subject || ''}
+                    onChange={(e) => setEditableDraft({ ...editableDraft, subject: e.target.value })}
+                    className="w-full bg-gray-800 rounded p-3 text-blue-100 border border-gray-700 focus:border-blue-500 focus:outline-none"
+                    placeholder="Enter subject..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-blue-100 text-sm font-semibold mb-1">Body:</label>
+                  <textarea
+                    value={editableDraft.body || ''}
+                    onChange={(e) => setEditableDraft({ ...editableDraft, body: e.target.value })}
+                    className="w-full bg-gray-800 rounded p-3 text-blue-100 border border-gray-700 focus:border-blue-500 focus:outline-none resize-none"
+                    rows={8}
+                    placeholder="Enter email body..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-blue-100 text-sm font-semibold mb-1">Closing:</label>
+                  <input
+                    type="text"
+                    value={editableDraft.closing || ''}
+                    onChange={(e) => setEditableDraft({ ...editableDraft, closing: e.target.value })}
+                    className="w-full bg-gray-800 rounded p-3 text-blue-100 border border-gray-700 focus:border-blue-500 focus:outline-none"
+                    placeholder="e.g., Best regards,"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-blue-100 text-sm font-semibold mb-1">Signature:</label>
+                  <input
+                    type="text"
+                    value={editableDraft.signature || ''}
+                    onChange={(e) => setEditableDraft({ ...editableDraft, signature: e.target.value })}
+                    className="w-full bg-gray-800 rounded p-3 text-blue-100 border border-gray-700 focus:border-blue-500 focus:outline-none"
+                    placeholder="Your name"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-4 text-xs text-blue-300 pt-2 border-t border-gray-700">
+                  <span>From: {selectedDraft.from}</span>
+                  <span>•</span>
+                  <span>Status: {selectedDraft.status}</span>
+                  <span>•</span>
+                  <span>
+                    {getDateFromEmail(selectedDraft.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {selectedDraft.status === 'draft' && (
+              <div className="flex gap-3 justify-end pt-4 border-t border-gray-700">
+                <button
+                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold shadow-sm transition-all"
+                  onClick={async () => {
+                    await handleDeclineDraft(selectedDraft);
+                    closeDraftModal();
+                  }}
+                >
+                  Decline
+                </button>
+                <button
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-sm transition-all"
+                  onClick={async () => {
+                    // Use the edited content for approval
+                    await handleApproveDraft(editableDraft);
+                    closeDraftModal();
+                  }}
+                >
+                  Approve & Send
+                </button>
+              </div>
+            )}
+            
+            {selectedDraft.status === 'approved' && (
+              <div className="flex justify-end pt-4 border-t border-gray-700">
+                <span className="text-green-400 text-sm font-semibold px-4 py-2 bg-green-900/40 rounded">
+                  Sent ✓
+                </span>
+              </div>
+            )}
+            
+            {selectedDraft.status === 'declined' && (
+              <div className="flex justify-end pt-4 border-t border-gray-700">
+                <span className="text-red-400 text-sm font-semibold px-4 py-2 bg-red-900/40 rounded">
+                  Declined ✗
+                </span>
+              </div>
+            )}
+
+            {/* Original Client Email Preview */}
+            <div className="mb-6 p-4 bg-blue-950/60 rounded-lg border border-blue-800">
+              {(() => {
+                if (selectedDraft.parentId) {
+                  // Prefer directly fetched parentEmail
+                  if (parentEmail) {
+                    return <>
+                      <div className="text-xs text-blue-300 mb-1">Replying to:</div>
+                      <div className="font-semibold text-blue-100 mb-1">{parentEmail.subject}</div>
+                      <div className="text-blue-200 text-sm italic truncate">{parentEmail.body && parentEmail.body.length > 100 ? parentEmail.body.slice(0, 100) + '...' : parentEmail.body}</div>
+                    </>;
+                  }
+                  // Fallback to clientMessages
+                  const original = clientMessages.find(e => e.id === selectedDraft.parentId);
+                  if (original) {
+                    return <>
+                      <div className="text-xs text-blue-300 mb-1">Replying to:</div>
+                      <div className="font-semibold text-blue-100 mb-1">{original.subject}</div>
+                      <div className="text-blue-200 text-sm italic truncate">{original.body.length > 100 ? original.body.slice(0, 100) + '...' : original.body}</div>
+                    </>;
+                  }
+                  return <div className="text-xs text-yellow-400">Original client email not found for preview.</div>;
+                } else {
+                  return <div className="text-xs text-yellow-400">No parent email linked to this draft.</div>;
+                }
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <style jsx global>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .animate-shimmer {
+          animation: shimmer 4s linear infinite;
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-12px); }
+        }
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+        .animate-float-slow {
+          animation: float 5s ease-in-out infinite;
+        }
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.7s cubic-bezier(0.4,0,0.2,1) both;
+        }
+      `}</style>
+    </main>
+  );
+} 

@@ -14,7 +14,7 @@ export async function POST(
   const { params } = await context;
   const { id: projectId } = params;
   const body = await request.json();
-  const { message, aiReply, parentId } = body;
+  const { message, aiReply, parentId, gmailId } = body;
 
   // If saving a client message
   if (message && !aiReply) {
@@ -23,6 +23,7 @@ export async function POST(
       body: message,
       from: 'CLIENT',
       createdAt: new Date(),
+      ...(gmailId ? { gmailId } : {}),
     });
     const threadId = clientMsgRef.id;
     await clientMsgRef.update({ threadId });
