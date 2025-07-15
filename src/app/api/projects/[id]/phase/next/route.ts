@@ -35,14 +35,14 @@ export async function POST(
   const clientMessages = clientMessagesSnap.docs.map(doc => doc.data().body).reverse();
   const context = clientMessages.join('\n---\n');
   // Ask Gemini if we should advance
-  const aiPrompt = `You are Digipod AI. Here are the latest client messages for a project currently in the ${project.currentPhase} phase.\n\nMessages:\n${context}\n\nShould this project advance to the next phase?\n\nRespond in this JSON format:\n{\n  "replyText": string,\n  "trigger": "client_approved" | "client_left_feedback" | null\n}`;
-  const ai = await getGeminiReply(aiPrompt);
+  const aiPrompt = `You are Digipod AI. Here are the latest client messages for a project currently in the ${project.currentPhase} phase.\n\nMessages:\n${context}\n\nShould this project advance to the next phase?\n\nRespond in this JSON format:\n{\n  \"replyText\": string,\n  \"trigger\": \"client_approved\" | \"client_left_feedback\" | null\n}`;
+  const ai = await getGeminiReply({ message: aiPrompt });
   if (ai.trigger === 'client_approved') {
     const nextPhase = phases[idx + 1];
     await db.collection('projects').doc(id).update({ currentPhase: nextPhase, updatedAt: new Date() });
     await db.collection('projects').doc(id).collection('phaseHistory').add({ phase: nextPhase, timestamp: new Date() });
-    return NextResponse.json({ success: true, nextPhase, aiReply: ai.replyText, trigger: ai.trigger });
+    return NextResponse.json({ success: true, nextPhase, aiReply: ai.body, trigger: ai.trigger });
   } else {
-    return NextResponse.json({ success: false, reason: ai.replyText, trigger: ai.trigger });
+    return NextResponse.json({ success: false, reason: ai.body, trigger: ai.trigger });
   }
 } 
