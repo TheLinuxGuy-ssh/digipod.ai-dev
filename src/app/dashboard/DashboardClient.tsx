@@ -151,7 +151,6 @@ function ProjectCard({ project, onDelete, onEdit }: { project: Project, onDelete
   );
 }
 
-// Helper for animated expand/collapse
 function ExpandableCard({ expanded, onClick, title, icon, summary, content, loading, gradientClass }: {
   expanded: boolean;
   onClick: () => void;
@@ -168,7 +167,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
       role="button"
       aria-label={`Expand ${title}`}
       className={
-        `${gradientClass} rounded-2xl shadow-xl p-8 flex flex-col items-start min-h-[180px] h-full relative overflow-hidden transition-all duration-300 outline-none focus:ring-4 focus:ring-blue-400/50 hover:scale-[1.02] hover:shadow-2xl border-2 border-transparent hover:border-blue-400 ${expanded ? 'ring-2 ring-blue-300/30 border-blue-400' : ''} ${loading ? 'animate-pulse' : ''}`
+        `${gradientClass} rounded-2xl shadow-xl p-8 flex flex-col backdrop-blur-md  card-bg  items-start min-h-[180px] border-1 h-full relative  transition-all duration-300 outline-none focus:ring-4 focus:ring-blue-400/50 hover:scale-[1.02] hover:shadow-2xl border-2 border-digi hover:border-blue-400 ${expanded ? 'ring-2 ring-blue-300/30 border-blue-400' : ''} ${loading ? 'animate-pulse' : ''}`
       }
       style={{ minHeight: 180, height: '100%', cursor: 'pointer' }}
       onClick={onClick}
@@ -176,7 +175,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
     >
       {/* Loading overlay */}
       {loading && (
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+        <div className="absolute inset-0  bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-blue-300 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-blue-200 text-sm font-medium">Loading...</span>
@@ -184,12 +183,14 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
         </div>
       )}
       
-      <div className="flex items-center w-full mb-2 select-none">
+      <div className="flex w-full mb-4 select-none">
         {icon}
+        <div className="flex w-full items-center">
         <h2 className="text-2xl font-extrabold text-white ml-2 flex-1 drop-shadow-lg tracking-tight">{title}</h2>
         <ChevronDownIcon
           className={`h-6 w-6 text-blue-100 ml-2 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
         />
+        </div>
       </div>
       {loading ? (
         <div className="w-full space-y-3">
@@ -733,15 +734,15 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
   });
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-x-hidden">
+    <main className="flex-1 flex flex-col min-h-screen bg-[#0f0f10] relative overflow-x-hidden dashboard-main">
       {/* Animated shimmer overlay */}
-      <div className="pointer-events-none fixed inset-0 z-0 animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" style={{ backgroundSize: '200% 100%' }} />
+      <div className="pointer-events-none fixed inset-0 z-0" style={{ backgroundSize: '200% 100%' }} />
       {/* Hero Header */}
       <section className="w-full mb-12 relative z-10" style={{ background: 'linear-gradient(to right, #23243a, #23243a 60%, #23243a)' }}>
-        <div className="w-full px-20 py-12">
+        <div className="w-full px-20 py-4">
           <div className="flex flex-row items-center justify-between w-full gap-16">
             <div className="flex-1 text-left">
-              <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-purple-300 to-blue-200 drop-shadow-lg">Dashboard</h1>
+              <h1 className="text-4xl font-extrabold tracking-tight mb-2 bg-clip-text text-[#6446d6] drop-shadow-lg">Dashboard</h1>
               <p className="text-lg text-gray-300 font-medium">Welcome back, creative rebel. Your anti-hustle HQ awaits.</p>
             </div>
             <div className="flex-1 flex justify-center items-center">
@@ -756,7 +757,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
               <div className="relative">
                 <button
                   onClick={() => handleCardToggle('calendar')}
-                  className="p-3 bg-blue-600 hover:bg-blue-700 rounded-full shadow-lg transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="p-3 bg-purple-800 border-1 digi-btn border-digi hover:bg-blue-700 rounded-full shadow-lg transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   aria-label="Toggle Calendar"
                 >
                   <CalendarDaysIcon className="h-6 w-6 text-white" />
@@ -784,12 +785,12 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
       )}
       {/* AI-powered Overview Cards */}
       {/* What's Changed Card - Top with Calendar Icon */}
-      <div className="w-full max-w-3xl mx-auto px-6 mb-8 relative">
+      <div className="w-full max-w-3xl mx-auto px-6 mb-8 relative ">
         <ExpandableCard
           expanded={expandedCard === 'summary'}
           onClick={() => handleCardToggle('summary')}
           title="What's Changed"
-          icon={<SparklesIcon className="h-8 w-8 text-yellow-300 animate-float" />}
+          icon={<SparklesIcon className="h-8 w-8 text-yellow-300" />}
           summary={
             loadingSummary ? (
               <div className="space-y-2 w-full">
@@ -810,7 +811,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                 <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '70%' }}></div>
               </div>
             ) : (
-              <div className="text-blue-100 text-base mt-2">
+              <div className="text-blue-100 text-base mt-2 " >
                 <p className="mb-4">{aiSummary || 'No AI changes detected.'}</p>
                 {summaryData && typeof summaryData === 'object' && 'summary' in summaryData && (
                   <div className="bg-blue-900/20 rounded-lg p-4 space-y-2">
@@ -852,14 +853,14 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
             )
           }
           loading={loadingSummary}
-          gradientClass="bg-gradient-to-br from-blue-800 via-blue-900 to-purple-900"
+          gradientClass="bg-gradient-to-b from-cyan-800 to-fuchsia-800"
         />
       </div>
       {/* Second row: To-Dos, Create Project, Drafted Replies */}
       <div className="px-4 md:px-12">
         <div className="flex flex-col items-center justify-center gap-8 md:flex-row md:flex-nowrap md:items-start md:justify-center md:gap-8 mb-12">
           {/* To-Dos Card */}
-          <div className="flex-1 max-w-sm min-h-[260px] flex flex-col justify-between bg-gradient-to-br from-purple-800 via-blue-900 to-blue-900 rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30">
+          <div className="flex-1 max-w-sm flex flex-col justify-between  rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-bl from-cyan-800 to-fuchsia-800">
             <ExpandableCard
               expanded={expandedCard === 'todos'}
               onClick={() => handleCardToggle('todos')}
@@ -869,7 +870,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                   <div className="text-blue-200 text-xs font-normal mt-1">Stay on top of your most important tasks and deadlines. Here you&apos;ll find your next actionable items, meetings, and project reminders.</div>
                 </>
               }
-              icon={<ClipboardDocumentCheckIcon className="h-8 w-8 text-green-200 animate-float drop-shadow-lg" />}
+              icon={<ClipboardDocumentCheckIcon className="h-8 w-8 mr-2 text-green-200 drop-shadow-lg" />}
               summary={
                 loadingTodos ? (
                   <div className="space-y-2 w-full">
@@ -990,18 +991,18 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                 )
               }
               loading={loadingTodos}
-              gradientClass="bg-gradient-to-br from-purple-800 via-blue-900 to-blue-900"
+              gradientClass=""
             />
           </div>
           {/* Create New Project Widget */}
           <div className="flex-[2] min-w-[400px] max-w-3xl min-h-[260px] flex flex-col justify-between">
-            <div className="bg-gray-800/80 rounded-2xl shadow-2xl p-10 border border-blue-900 backdrop-blur-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-900/40 group cursor-pointer flex flex-col justify-between h-full">
-              <h2 className="text-2xl font-bold mb-2 flex items-center gap-2 text-blue-200 group-hover:text-purple-200 transition-colors">
+            <div className="bg-gray-800/80 rounded-2xl shadow-2xl p-10 border-1 border-digi backdrop-blur-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-900/40 group cursor-pointer flex flex-col justify-between h-full">
+              <h2 className="text-2xl font-bold mb-2 flex items-center  gap-2 text-blue-200 group-hover:text-purple-200 transition-colors">
                 <span className="animate-pulse"><PlusIcon className="h-6 w-6" /></span> Create a New Project
               </h2>
-             
+              
               <p className="text-gray-400 mb-6">Start a new project for a client. You can set the client email later.</p>
-              <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3 items-center">
+              <form onSubmit={handleCreate}  className="flex flex-col sm:flex-row gap-3 items-center">
                 <input
                   className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:outline-none bg-gray-900/70 border-gray-700 text-white placeholder-gray-400"
                   placeholder="New project name"
@@ -1011,7 +1012,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                 />
                 <button
                   type="submit"
-                  className="transition text-white px-6 py-3 rounded-lg flex items-center gap-2 font-semibold shadow-lg disabled:opacity-50 min-w-[120px] justify-center bg-gradient-to-r from-blue-600 to-purple-500 hover:from-purple-500 hover:to-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none active:scale-95"
+                  className="transition bg-gradient-to-r from-blue-600 to-fuchsia-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-semibold shadow-lg disabled:opacity-50 min-w-[120px] justify-center bg-[#383f5eda] digi-btn border-1 border-digi hover:from-purple-500 hover:to-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none active:scale-95"
                   disabled={loading}
                 >
                   <PlusIcon className="h-5 w-5" style={{ color: '#fff', transition: 'color 0.2s' }} />
@@ -1021,7 +1022,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
             </div>
           </div>
           {/* Drafted Replies Card */}
-          <div className="flex-1 max-w-sm min-h-[260px] flex flex-col justify-between bg-gradient-to-br from-blue-900/80 to-blue-800/60 rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30">
+          <div className="flex-1 max-w-sm flex flex-col  justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-br from-cyan-800 to-fuchsia-800">
             <ExpandableCard
               expanded={expandedCard === 'drafts'}
               onClick={() => handleCardToggle('drafts')}
@@ -1031,7 +1032,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                   <div className="text-blue-200 text-xs font-normal mt-1">I saw some emails in your inbox from your client. I'm ready with the replies.</div>
                 </>
               }
-              icon={<EnvelopeOpenIcon className="h-8 w-8 text-blue-200 animate-float drop-shadow-lg" />}
+              icon={<EnvelopeOpenIcon className="h-8 w-8 mr-2 text-blue-200 drop-shadow-lg" />}
               summary={
                 loadingDrafts ? (
                   <div className="space-y-2 w-full">
@@ -1179,7 +1180,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                 )
               }
               loading={loadingDrafts}
-              gradientClass="bg-gradient-to-br from-blue-900/80 to-blue-800/60"
+              gradientClass=""
             />
           </div>
         </div>
