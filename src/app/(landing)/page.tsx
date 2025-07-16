@@ -21,7 +21,7 @@ export default function Home() {
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="https://forms.gle/2j3DcMv9HyxzeDqi8" target="_blank" className="btn"><span>Join Waitlist &#8594;</span></a>
             <a
-              href="https://rzp.io/rzp/eccVpVH"
+              href="https://rzp.io/rzp/HFCaYsw"
               target="_blank"
               className="btn cta-button"
               style={{ background: '#FFD600', color: '#23243a', fontWeight: 700, opacity: 0.88 }}
