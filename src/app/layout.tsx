@@ -19,7 +19,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="https://unpkg.com/three@0.155.0/build/three.min.js" strategy="beforeInteractive" />
         <Script src="/dat.gui.min.js" strategy="beforeInteractive" />
         <Script src="/locomotive.min.js" strategy="afterInteractive" />
-        <Script src="/new.js" strategy="afterInteractive" />
       </head>
       <body>
         <SWRProvider>

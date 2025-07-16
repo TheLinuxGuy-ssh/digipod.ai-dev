@@ -305,7 +305,7 @@ canvas {
   top: 1rem;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 10000000000000000000000000;
+  z-index: 100;
   color: #fff;
   background-color: #00000025;
   backdrop-filter: blur(8px);
