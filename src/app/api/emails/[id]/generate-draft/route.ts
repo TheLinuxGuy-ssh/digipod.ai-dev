@@ -12,6 +12,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!emailSnap.exists) return NextResponse.json({ error: 'Email not found' }, { status: 404 });
 
   const email = emailSnap.data();
+  if (!email) {
+    return NextResponse.json({ error: 'Email data is undefined' }, { status: 500 });
+  }
   const aiDraft = await generateAIDraftReply(email);
 
   await emailRef.update({

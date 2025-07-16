@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     }
     await db.collection('onboard').doc(uid).set({
       email,
-      createdAt: createdAt || n ew Date().toISOString(),
+      createdAt: createdAt || new Date().toISOString(),
     });
     return NextResponse.json({ success: true });
   } catch (error) {

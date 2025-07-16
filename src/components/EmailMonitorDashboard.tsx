@@ -12,9 +12,9 @@ import {
   XMarkIcon,
   EyeIcon,
   ClockIcon,
-  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import useSWR from 'swr';
+import type { User } from 'firebase/auth';
 
 interface EmailSetting {
   id: string;
@@ -60,7 +60,7 @@ interface ProcessingStatus {
 }
 
 export default function EmailMonitorDashboard() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'settings' | 'filters' | 'drafts' | 'status'>('settings');
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -85,6 +85,17 @@ export default function EmailMonitorDashboard() {
     emailAddress: '',
     projectId: ''
   });
+
+  // Fetcher for SWR
+  const fetcher = async (url: string) => {
+    if (!currentUser) return null;
+    const token = await currentUser.getIdToken();
+    const response = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error('Request failed');
+    return response.json();
+  };
 
   // Fetch data
   const { data: emailSettings, mutate: mutateSettings } = useSWR(
@@ -127,17 +138,6 @@ export default function EmailMonitorDashboard() {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-    });
-    if (!response.ok) throw new Error('Request failed');
-    return response.json();
-  };
-
-  // Fetcher for SWR
-  const fetcher = async (url: string) => {
-    if (!currentUser) return null;
-    const token = await currentUser.getIdToken();
-    const response = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}` },
     });
     if (!response.ok) throw new Error('Request failed');
     return response.json();
@@ -269,7 +269,7 @@ export default function EmailMonitorDashboard() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as 'settings' | 'filters' | 'drafts' | 'status')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
