@@ -251,7 +251,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   };
 
   return (
-    <div className={`h-screen bg-gray-900 shadow-xl flex flex-col p-0 border-r border-gray-800 transition-all duration-200 relative z-40 ${collapsed ? 'w-20' : 'w-72'} min-w-0`} style={{ maxHeight: '100vh', overflow: 'visible', borderLeft: '4px solid #232946' }}>
+    <div className={`h-screen bg-gray-900 shadow-xl flex flex-col p-0 border-r border-gray-800 transition-all duration-200 relative z-40 ${collapsed ? 'w-20' : 'w-72'} min-w-0`} style={{ maxHeight: '100vh', overflow: 'visible' }}>
       {/* Main scrollable area: logo + nav + accounts */}
       <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto flex flex-col p-4 gap-4" style={{ maxHeight: 'calc(100vh - 170px)' }}>
         {/* Collapse/Expand Button - vertically centered */}
@@ -403,7 +403,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
         </div>
         {/* Centered FocusModeToggle - moved inside scrollable area */}
         <div className="flex flex-col justify-center items-center mt-4">
-          <FocusModeToggle focusMode={focusMode} setFocusMode={setFocusMode} />
+          <FocusModeToggle focusMode={focusMode} setFocusMode={setFocusMode} responsive={collapsed} text={collapsed ? "" : "Focus Mode"} />
         </div>
       </div>
       {/* IMAP/SMTP Modal */}
@@ -454,7 +454,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
       )}
       {/* Profile/Help Section - sticky at bottom */}
       <div className={`sticky bottom-0 bg-gray-900 pt-6 border-t border-gray-800 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`} style={{ zIndex: 10 }}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-center">
           <div className="w-8 h-8 bg-blue-900 flex items-center justify-center font-bold text-blue-200 text-sm">
             {currentUser?.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 
              currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'U'}
@@ -471,7 +471,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
           )}
         </div>
         {!collapsed && (
-          <div className="flex gap-3 mt-2 text-xs text-gray-400">
+          <div className="flex gap-3 mt-2 text-xs text-gray-400 justify-center">
             <a href="#" className="hover:text-blue-400 transition">Settings</a>
             <a href="#" className="hover:text-blue-400 transition">Help</a>
             <a href="#" className="hover:text-blue-400 transition" onClick={handleLogout}>Logout</a>

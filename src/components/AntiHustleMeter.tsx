@@ -83,7 +83,7 @@ export default function AntiHustleMeter({ minutesSaved }: { minutesSaved: number
             width: `${Math.min(minutesSaved, 1200) / 1200 * 100}%`, // 1200 minutes = 20 hours
           }}
         />
-        {/* Shimmer effect */}
+  
         <div
           className="absolute left-0 top-0 h-full w-full pointer-events-none animate-fade-in"
           style={{ background: 'linear-gradient(120deg, #fff6, #fff0 60%)', opacity: 0.15 }}
