@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth } from '@/lib/firebase';
 import Image from 'next/image';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [signupCode, setSignupCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
@@ -33,9 +35,21 @@ export default function SignUpPage() {
     setLoading(true);
     setError('');
     try {
+      // 1. Check code in Firestore
+      const db = getFirestore();
+      const codeRef = doc(db, 'signupCodes', signupCode.trim().toUpperCase());
+      const codeSnap = await getDoc(codeRef);
+      if (!codeSnap.exists() || codeSnap.data().used) {
+        setError('Invalid or already used signup code.');
+        setLoading(false);
+        return;
+      }
+      // 2. Proceed with Firebase Auth signup
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      // Post to onboard collection for analytics
+      // 3. Mark code as used
+      await updateDoc(codeRef, { used: true, usedBy: user.uid, usedAt: new Date() });
+      // 4. Post to onboard collection for analytics
       await fetch('/api/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,6 +101,16 @@ export default function SignUpPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
+          />
+          <input
+            type="text"
+            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-800 text-white placeholder-gray-400 border-gray-700"
+            placeholder="Signup Code"
+            value={signupCode}
+            onChange={e => setSignupCode(e.target.value)}
+            required
+            maxLength={16}
+            style={{ textTransform: 'uppercase', letterSpacing: 2 }}
           />
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
           <button
