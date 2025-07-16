@@ -156,7 +156,7 @@ body::before {
   transform: translate(-50%, -50%);
   pointer-events: none;
   mix-blend-mode: difference;
-  z-index: 99999999999999999999999;
+  z-index: 110;
   transition: width 0.2s, height 0.2s;
   will-change: transform;
 }
@@ -560,10 +560,12 @@ a-hole canvas {
 
 .card-img {
   height: 100%;
+  width: 100%;
 }
 
 .card-img img {
   height: 100%;
+  width: 100%;
   border-radius: 1rem;
 }
 
@@ -645,6 +647,14 @@ a-hole canvas {
 
 @media only screen and (max-width: 1024px) {
 
+  .features {
+    flex-direction: column;
+    margin: 0 !important;
+  }
+  .features .card {
+    margin: 0.5rem 0;
+    width: 80vw !important;
+  }
   .lists {
     text-align: left;
   }
@@ -689,8 +699,9 @@ a-hole canvas {
   }
 
   .feature-card {
-    height: 25rem !important;
+    height: 100% !important;
     --fz: calc(0.052 * var(--sz)) !important;
+    margin: 1.25rem 0;
   }
 
   .blocks.feature-card {
@@ -699,6 +710,12 @@ a-hole canvas {
 
   .footer-background {
     background-image: url('/footer-mobile.png') !important;
+  }
+  .feature-card .tilt {
+    display: block !important;
+  }
+  .card-img {
+    margin: 0.5rem 0 !important;
   }
 }
 

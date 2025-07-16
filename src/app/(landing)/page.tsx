@@ -7,7 +7,7 @@ export default function Home() {
     return (
     <div id="master">
       <nav className="navbar">
-        <Image src="/digipod.png" alt="nav-logo" className="nav-logo" width={200} height={60} />
+        <Image src="/digipod.png" alt="nav-logo" className="nav-logo" width={150} height={60} />
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto' }}>
           <a href="/signin" className="btn" style={{ padding: '8px 20px', fontWeight: 600, fontSize: '1rem', background: 'rgba(133,80,255,0.15)', borderRadius: '20px', border: '1px solid rgba(149,120,255,0.2)', color: '#fff', marginRight: '0.5rem', textDecoration: 'none' }}>Sign In</a>
           <a href="/signup" className="btn" style={{ padding: '8px 20px', fontWeight: 600, fontSize: '1rem', background: 'rgba(133,80,255,0.35)', borderRadius: '20px', border: '1px solid rgba(149,120,255,0.3)', color: '#fff', marginRight: '0.5rem', textDecoration: 'none' }}>Sign Up</a>
@@ -83,7 +83,7 @@ export default function Home() {
               <p>Your chaotic inbox, reimagined. <br />Lets AI triage, respond and organise client comms so you never miss a beat.</p>
             </div>
             <div className="card-img">
-              <Image src="/inbox.png" alt="" width={200} height={120} />
+              <Image src="/inbox.png" alt="" width={500} height={540} />
             </div>
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function Home() {
           <div className="mist"></div>
           <div className="tilt">
             <div className="card-img">
-              <Image src="/progression.png" alt="" width={200} height={120} />
+              <Image src="/progression.png" alt="" width={500} height={540} />
             </div>
             <div className="feature-content">
               <span className="tag">02</span>
@@ -109,7 +109,7 @@ export default function Home() {
               <p>Our AI learns from every project, client message and edge case. <span>Fewer Fumbles.</span>. Sharper Suggestions. Always levelling up. </p>
             </div>
             <div className="card-img">
-              <Image src="/AI.png" alt="" width={200} height={120} />
+              <Image src="/AI.png" alt="" width={500} height={540} />
             </div>
           </div>
         </div>
@@ -117,7 +117,7 @@ export default function Home() {
           <div className="mist"></div>
           <div className="tilt">
             <div className="card-img">
-              <Image src="/marathon.png" alt="" width={200} height={120} />
+              <Image src="/marathon.png" alt="" width={500} height={540} />
             </div>
             <div className="feature-content">
               <span className="tag">04</span>
@@ -135,7 +135,7 @@ export default function Home() {
               <p>Digipod plugs into your existing workflows -<span>from Gmail to Notion to Slack.</span> No rip and replace required.</p>
             </div>
             <div className="card-img">
-              <Image src="/mail.png" alt="" width={200} height={120} />
+              <Image src="/mail.png" alt="" width={500} height={540} />
             </div>
           </div>
         </div>
