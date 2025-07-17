@@ -401,10 +401,11 @@ canvas {
 .section-resource {
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  height: 120vw;
   z-index: -1;
   display: flex;
   overflow: hidden;
+  padding: 0rem 2rem;
 }
 
 .osmo-icon__link {
@@ -530,7 +531,7 @@ a-hole canvas {
   box-shadow: 0px 39px 156px 0px rgba(154, 137, 255, 0.75);
   -webkit-box-shadow: 0px 39px 166px 0px rgba(155, 137, 255, 0.459);
   -moz-box-shadow: 0px 39px 166px 0px rgba(155, 137, 255, 0.274);
-  position: absolute;
+
   border-radius: 0.75rem;
 }
 
@@ -684,7 +685,7 @@ a-hole canvas {
     margin-top: -10vw !important;
   } */
   .showcase-img {
-    width: 90% !important;
+    width: 100% !important;
   }
 
   .extras-section {

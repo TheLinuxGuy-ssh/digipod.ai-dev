@@ -45,7 +45,7 @@ export default function Home() {
         <div id="fps" style={{ display: 'none' }}>FPS: 0</div>
       </div>
       <section className="section-resource" data-scroll-section="">
-        <Image className="showcase-img" src="/highlight.png" style={{ zIndex: 1000000 }} width={800} height={400} alt="" />
+        <Image className="showcase-img" src="/showcase-latest.png" style={{ zIndex: 1000000 }} width={1372} height={1079} alt="" />
       </section>
       <section className="features" data-scroll-section="">
         <div className="card card-before">
