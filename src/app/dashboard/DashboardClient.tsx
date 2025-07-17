@@ -734,7 +734,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
   });
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 to-transparent relative overflow-x-hidden">
+    <main className="flex-1 flex flex-col min-h-screen bg-gradient-to-r from-gray-900 to-gray-900 to-transparent relative overflow-x-hidden">
       {/* Animated shimmer overlay */}
       <div className="pointer-events-none fixed inset-0 z-0 animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" style={{ backgroundSize: '200% 100%' }} />
       {/* Hero Header */}
