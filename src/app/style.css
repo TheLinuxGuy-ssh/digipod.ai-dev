@@ -1247,8 +1247,9 @@ span {
   color: #FFFFFF;
   font-weight: 600;
   font-size: 1rem;
-  padding: 14px 0;
+  padding: 14px 0.75rem;
   width: 100%;
+  text-decoration: none;
   border: 1px solid rgba(149, 120, 255, 0.3);
   border-radius: 20px;
   cursor: pointer;
