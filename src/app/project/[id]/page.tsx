@@ -745,7 +745,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   const signatureImage = null; // Replace with actual signature image if available
   
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-gray-900 text-white dashboard-main">
       <header className="bg-gray-800/50 backdrop-blur-sm sticky top-0 z-40 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
