@@ -734,7 +734,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
   });
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen bg-[#0f0f10] relative overflow-x-hidden dashboard-main">
+    <main className="flex-1 flex flex-col min-h-screen bg-[#0f0f10] relative overflow-x-hidden">
       {/* Animated shimmer overlay */}
       <div className="pointer-events-none fixed inset-0 z-0" style={{ backgroundSize: '200% 100%' }} />
       {/* Hero Header */}

@@ -745,7 +745,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   const signatureImage = null; // Replace with actual signature image if available
   
   return (
-    <div className="min-h-screen bg-gray-900 text-white dashboard-main">
+    <div className="min-h-screen bg-gray-900 text-white">
       <header className="backdrop-blur-sm sticky top-0 z-40 border-b border-gray-700" style={{ background: 'linear-gradient(to right, #23243ab2, #23243ab2 60%, #23243ab2)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
