@@ -115,7 +115,7 @@ function ProjectCard({ project, onDelete, onEdit }: { project: Project, onDelete
       className="relative rounded-2xl shadow-xl p-8 border border-blue-200/30 backdrop-blur-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-200/60 group cursor-pointer bg-white/10 overflow-hidden"
       onClick={() => router.push(`/project/${project.id}`)}
     >
-      <div className="absolute inset-0 pointer-events-none rounded-2xl bg-[#6446d6]" style={{boxShadow: '-1px 128px 175px 0px rgba(0,0,0,0.75) inset'}} />
+      <div className="absolute inset-0 pointer-events-none rounded-2xl bg-[#6446d6]" style={{boxShadow: '-1px 128px 175px 0px rgb(35, 36, 58, .7) inset'}} />
       {/* Dots menu */}
       <div className="absolute top-4 right-4 z-20">
         <button onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }} className="p-2 rounded-full hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-blue-400">
