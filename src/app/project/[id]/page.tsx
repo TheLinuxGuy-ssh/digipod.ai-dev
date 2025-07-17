@@ -777,9 +777,9 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                 <div key={`${phase}-${idx}`} className="flex-1 flex flex-col items-center relative">
                   <motion.div
                     layout
-                    animate={isActive ? { scale: 1.18, boxShadow: '0 0 12px 2px #3b82f6, 0 0 32px 2px #6366f1' } : { scale: 1, boxShadow: 'none' }}
+                    animate={isActive ? { scale: 1.18, boxShadow: '0 0 12px 2px #6446d6, 0 0 32px 2px #6446d6' } : { scale: 1, boxShadow: 'none' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                    className={`rounded-full h-16 w-16 flex items-center justify-center mb-2 border-4 transition-all duration-700 ${isActive ? 'bg-blue-600 text-white border-blue-400 shadow-md ring-2 ring-blue-400/30' : isCompleted ? 'bg-green-900 text-green-300 border-green-400' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
+                    className={`rounded-full h-16 w-16 flex items-center justify-center mb-2 border-4 transition-all duration-700 ${isActive ? 'bg-[#6446d6] text-white border-blue-400 shadow-md ring-2 ring-blue-400/30' : isCompleted ? 'bg-green-900 text-green-300 border-green-400' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
                     style={{ zIndex: isActive ? 10 : 1 }}
                   >
                     {phaseIcons[idx]}
@@ -873,7 +873,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                 type="submit"
                 disabled={filterLoading}
                 onClick={() => console.log('Filter button clicked!')}
-                className="h-12 w-full bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-semibold shadow transition-all duration-150 flex items-center justify-center text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-12 w-full bg-[#6446d6] hover:bg-blue-800 text-white rounded-lg font-semibold shadow transition-all duration-150 flex items-center justify-center text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {filterLoading ? 'Filtering...' : 'Set Filters'}
               </button>
