@@ -754,7 +754,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
             </button>
             <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">{project.name}</h1>
           </div>
-          <button onClick={handleAdvance} disabled={advancing} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold shadow-md flex items-center gap-2 disabled:opacity-50 transition">
+          <button onClick={handleAdvance} disabled={advancing} className="bg-[#6446d6] hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold shadow-md flex items-center gap-2 disabled:opacity-50 transition">
             {advancing ? <><Spinner /> Advancing...</> : 'Advance Phase'}
           </button>
         </div>
@@ -779,7 +779,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                     layout
                     animate={isActive ? { scale: 1.18, boxShadow: '0 0 12px 2px #6446d6, 0 0 32px 2px #6446d6' } : { scale: 1, boxShadow: 'none' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                    className={`rounded-full h-16 w-16 flex items-center justify-center mb-2 border-4 transition-all duration-700 ${isActive ? 'bg-[#6446d6] text-white border-blue-400 shadow-md ring-2 ring-blue-400/30' : isCompleted ? 'bg-green-900 text-green-300 border-green-400' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
+                    className={`rounded-full h-16 w-16 flex items-center justify-center mb-2 border-4 transition-all duration-700 ${isActive ? 'bg-[#6446d6] text-white border-[#6446d6] shadow-md ring-2 ring-blue-400/30' : isCompleted ? 'bg-green-900 text-green-300 border-green-400' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
                     style={{ zIndex: isActive ? 10 : 1 }}
                   >
                     {phaseIcons[idx]}
