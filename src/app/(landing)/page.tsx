@@ -1,9 +1,69 @@
+'use client';
 import '../style.css';
 import '../locomotive.css';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
 // import Link from 'next/link';
 
+// Razorpay handler response type
+interface RazorpayResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id?: string;
+  razorpay_signature?: string;
+}
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 export default function Home() {
+  const [rzpReady, setRzpReady] = useState(false);
+
+  useEffect(() => {
+    // Load Razorpay script if not already present
+    if (!window.document.getElementById('razorpay-cdn')) {
+      const script = document.createElement('script');
+      script.id = 'razorpay-cdn';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => setRzpReady(true);
+      document.body.appendChild(script);
+    } else {
+      setRzpReady(true);
+    }
+  }, []);
+
+  const handleFoundersDeal = () => {
+    if (!window.Razorpay) {
+      alert('Razorpay SDK not loaded. Please try again in a moment.');
+      return;
+    }
+    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
+      alert('Razorpay key is not set. Please contact support.');
+      return;
+    }
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Public key
+      amount: 40000, // Amount in paise (INR 400)
+      currency: 'INR',
+      name: 'Digipod',
+      description: 'Unlock Founders Deal',
+      // You can add more options here (prefill, notes, etc.)
+      handler: function (response: RazorpayResponse) {
+        console.log('Razorpay payment response:', response);
+        if (response && response.razorpay_payment_id) {
+          window.location.href = `${window.location.origin}/preorder-success?payment_id=${response.razorpay_payment_id}`;
+        } else {
+          alert('Payment succeeded, but no payment ID was returned. Please contact support.');
+        }
+      },
+      theme: { color: '#FFD600' },
+    };
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  };
+
     return (
     <div id="master">
       <nav className="navbar">
@@ -20,14 +80,15 @@ export default function Home() {
           <div className="author">Digipod is the first anti-producitvity tool for creatives. <br /> We dont help hustle - we help you stop. Automate emails, invoices, updates, client chaos so you can finally get back to your craft.</div>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="https://forms.gle/2j3DcMv9HyxzeDqi8" target="_blank" className="btn"><span>Join Waitlist &#8594;</span></a>
-            <a
-              href="https://rzp.io/rzp/HFCaYsw"
-              target="_blank"
+            <button
+              type="button"
               className="btn cta-button"
               style={{ background: '#FFD600', color: '#23243a', fontWeight: 700, opacity: 0.88 }}
+              onClick={handleFoundersDeal}
+              disabled={!rzpReady}
             >
               <span>Unlock Founders deal</span>
-            </a>
+            </button>
           </div>
         </div>
       </div>

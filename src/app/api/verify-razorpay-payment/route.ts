@@ -8,10 +8,19 @@ const razorpay = new Razorpay({
 });
 
 export async function POST(req: NextRequest) {
-  const { payment_id } = await req.json();
-  if (!payment_id) return NextResponse.json({ error: 'Missing payment_id' }, { status: 400 });
-
   try {
+    const { payment_id } = await req.json();
+    if (!payment_id || typeof payment_id !== 'string' || !payment_id.startsWith('pay_')) {
+      return NextResponse.json({ error: 'Invalid or missing payment_id' }, { status: 400 });
+    }
+
+    // Check if a code already exists for this payment_id
+    const existing = await db.collection('signupCodes').where('paymentId', '==', payment_id).limit(1).get();
+    if (!existing.empty) {
+      const doc = existing.docs[0].data();
+      return NextResponse.json({ code: doc.code });
+    }
+
     // 1. Verify payment with Razorpay
     const payment = await razorpay.payments.fetch(payment_id);
     if (payment.status !== 'captured') {
@@ -35,7 +44,9 @@ export async function POST(req: NextRequest) {
 
     // 5. Return code
     return NextResponse.json({ code });
-  } catch (err) {
+  } catch (err: any) {
+    // Log only the error message in production
+    console.error('Razorpay verification error:', err?.message || err);
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 });
   }
 } 
