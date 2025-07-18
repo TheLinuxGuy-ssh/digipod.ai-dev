@@ -33,6 +33,7 @@ export default function PreorderSuccessPage() {
 
   return (
     <div className="thank-you">
+      <p style={{ color: 'green' }}>This is a test deployment change.</p>
       <h1>Thank you for your pre-order!</h1>
       <p>Your unique signup code:</p>
       <div className="signup-code" style={{ fontSize: 32, fontWeight: 700, letterSpacing: 2 }}>{code}</div>
