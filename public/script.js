@@ -1113,10 +1113,6 @@ function setupEventListeners() {
     shaderMaterial.uniforms.iMouse.value.set(event.clientX, event.clientY);
   });
 
-  // Handle play button
-  document.getElementById("playButton").addEventListener("click", toggleAudio);
-
-
   // Handle keyboard shortcuts
   window.addEventListener("keydown", (event) => {
     // Space bar to toggle play/pause
@@ -1181,7 +1177,6 @@ function toggleAudio() {
     audioSource.connect(analyser);
     analyser.connect(audioContext.destination);
 
-
     // Resume audio context (needed for newer browsers)
     audioSource.muted = true;
     audioContext.resume().then(() => {
@@ -1191,7 +1186,6 @@ function toggleAudio() {
       });
     });
 
-    document.getElementById("playButton").textContent = "STOP";
     playing = true;
     shaderMaterial.uniforms.isPlaying.value = true;
 
@@ -1202,7 +1196,6 @@ function toggleAudio() {
   } else {
     // Stop playback
     audioElement.pause();
-    document.getElementById("playButton").textContent = "PLAY";
     playing = false;
     shaderMaterial.uniforms.isPlaying.value = false;
   }
@@ -1468,7 +1461,9 @@ function animate(timestamp) {
   const now = timestamp;
   if (now - lastTime >= 1000) {
     const fps = Math.round((frameCount * 1000) / (now - lastTime));
-    fpsElement.textContent = `FPS: ${fps}`;
+    if (fpsElement) {
+      fpsElement.textContent = `FPS: ${fps}`;
+    }
     frameCount = 0;
     lastTime = now;
   }

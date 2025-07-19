@@ -1,8 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import Image from 'next/image';
 
@@ -19,37 +18,46 @@ export default function SignUpPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        // User is already signed in, redirect to dashboard
-        router.push('/dashboard');
+        // User is already signed in, show sign out option
+        setAuthChecking(false);
       } else {
         // User is not signed in, show signup form
         setAuthChecking(false);
       }
     });
-
     return () => unsubscribe();
   }, [router]);
+
+  // Pre-fill signup code from URL parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeFromUrl = urlParams.get('code');
+    if (codeFromUrl) {
+      setSignupCode(codeFromUrl.toUpperCase());
+    }
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      // 1. Check code in Firestore
-      const db = getFirestore();
-      const codeRef = doc(db, 'signupCodes', signupCode.trim().toUpperCase());
-      const codeSnap = await getDoc(codeRef);
-      if (!codeSnap.exists() || codeSnap.data().used) {
-        setError('Invalid or already used signup code.');
+      // 1. Check code using API
+      const redeemRes = await fetch('/api/redeem-license', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: signupCode.trim().toUpperCase() }),
+      });
+      const redeemData = await redeemRes.json();
+      if (!redeemData.success) {
+        setError(redeemData.error || 'Invalid or already used signup code.');
         setLoading(false);
         return;
       }
       // 2. Proceed with Firebase Auth signup
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      // 3. Mark code as used
-      await updateDoc(codeRef, { used: true, usedBy: user.uid, usedAt: new Date() });
-      // 4. Post to onboard collection for analytics
+      // 3. Post to onboard collection for analytics
       await fetch('/api/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,6 +82,23 @@ export default function SignUpPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is signed in, show sign out button
+  if (auth.currentUser) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-xl shadow-lg flex flex-col items-center">
+          <p className="mb-4 text-gray-700 font-semibold">You are already signed in as <span className="text-blue-600">{auth.currentUser.email}</span>.</p>
+          <button
+            className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-3 rounded-lg font-semibold shadow-sm transition"
+            onClick={async () => { await signOut(auth); router.refresh(); }}
+          >
+            Sign Out
+          </button>
         </div>
       </div>
     );

@@ -1,232 +1,237 @@
-'use client';
-import '../style.css';
-import '../locomotive.css';
-import Image from 'next/image';
-import { useEffect, useState } from 'react';
-// import Link from 'next/link';
+"use client";
+import Image from "next/image";
+import Link from "next/link";
+import Script from "next/script";
+import { useCallback, useState } from "react";
 
-// Razorpay handler response type
-interface RazorpayResponse {
-  razorpay_payment_id: string;
-  razorpay_order_id?: string;
-  razorpay_signature?: string;
-}
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay?: unknown;
   }
 }
 
-export default function Home() {
-  const [rzpReady, setRzpReady] = useState(false);
+export default function LandingPage() {
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  useEffect(() => {
-    // Load Razorpay script if not already present
-    if (!window.document.getElementById('razorpay-cdn')) {
-      const script = document.createElement('script');
-      script.id = 'razorpay-cdn';
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      script.onload = () => setRzpReady(true);
-      document.body.appendChild(script);
-    } else {
-      setRzpReady(true);
-    }
-  }, []);
-
-  const handleFoundersDeal = () => {
-    if (!window.Razorpay) {
-      alert('Razorpay SDK not loaded. Please try again in a moment.');
-      return;
-    }
-    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-      alert('Razorpay key is not set. Please contact support.');
+  const handleRazorpay = useCallback(() => {
+    if (typeof window === "undefined" || !window.Razorpay) {
+      alert("Razorpay SDK not loaded yet. Please wait a moment and try again.");
       return;
     }
     const options = {
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Public key
-      amount: 40000, // Amount in paise (INR 400)
-      currency: 'INR',
-      name: 'Digipod',
-      description: 'Unlock Founders Deal',
-      // You can add more options here (prefill, notes, etc.)
-      handler: function (response: RazorpayResponse) {
-        console.log('Razorpay payment response:', response);
-        if (response && response.razorpay_payment_id) {
-          window.location.href = `${window.location.origin}/preorder-success?payment_id=${response.razorpay_payment_id}`;
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+      amount: 40000,
+      currency: "INR",
+      name: "Digipod",
+      description: "Early Access - Founders Deal",
+      handler: async function (response: unknown) {
+        const res = response as { razorpay_payment_id?: string };
+        if (!res.razorpay_payment_id) {
+          alert("Payment ID missing!");
+          return;
+        }
+        setIsRedirecting(true);
+        // Call backend to verify and get license key
+        const verifyRes = await fetch("/api/verify-razorpay-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payment_id: res.razorpay_payment_id }),
+        });
+        const data = await verifyRes.json();
+        if (data.code) {
+          window.location.href = `/preorder-success?license=${encodeURIComponent(data.code)}&payment_id=${encodeURIComponent(res.razorpay_payment_id)}`;
         } else {
-          alert('Payment succeeded, but no payment ID was returned. Please contact support.');
+          setIsRedirecting(false);
+          alert("Payment verified, but license key not generated. Please contact support.");
         }
       },
-      theme: { color: '#FFD600' },
+      prefill: {
+        name: "",
+        email: "",
+      },
+      theme: {
+        color: "#6c4ad6",
+      },
     };
-    const rzp = new window.Razorpay(options);
+    type RazorpayType = new (options: object) => { open: () => void };
+    const RazorpayConstructor = window.Razorpay as RazorpayType;
+    const rzp = new RazorpayConstructor(options);
     rzp.open();
-  };
+  }, []);
 
-    return (
-    <div id="master">
-      <nav className="navbar">
-        <Image src="/digipod.png" alt="nav-logo" className="nav-logo" width={150} height={60} />
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: 'auto' }}>
-          <a href="/signin" className="btn" style={{ padding: '8px 20px', fontWeight: 600, fontSize: '1rem', background: 'rgba(133,80,255,0.15)', borderRadius: '20px', border: '1px solid rgba(149,120,255,0.2)', color: '#fff', marginRight: '0.5rem', textDecoration: 'none' }}>Sign In</a>
-          <a href="/signup" className="btn" style={{ padding: '8px 20px', fontWeight: 600, fontSize: '1rem', background: 'rgba(133,80,255,0.35)', borderRadius: '20px', border: '1px solid rgba(149,120,255,0.3)', color: '#fff', marginRight: '0.5rem', textDecoration: 'none' }}>Sign Up</a>
+  return (
+    <main className="min-h-screen w-full flex flex-col items-center text-white bg-gradient-to-b from-[#0a0820] via-[#14122b] to-[#1a1333]" style={{ fontFamily: 'Inter, sans-serif' }}>
+      {/* Navbar */}
+      <nav className="w-full flex justify-center items-center py-3 px-2 bg-transparent sticky top-0 z-30">
+        <div className="flex w-full max-w-3xl items-center justify-between bg-black/90 rounded-2xl border border-[#666] px-5 py-2" style={{ boxShadow: '0 2px 16px 0 #0008' }}>
+          <Image src="/digipod.png" alt="Digipod Logo" height={36} width={120} style={{ height: 36, width: 'auto' }} />
+          <div className="flex gap-2">
+            <Link href="/signin" className="rounded-full px-5 py-2 bg-[#2d186a] text-white font-bold text-base shadow border border-[#3a1c8d] hover:bg-[#3a1c8d] transition-all" style={{ boxShadow: '0 2px 8px 0 #2d186a44' }}>Sign In</Link>
+            <Link href="/signup" className="rounded-full px-5 py-2 bg-[#6c4ad6] text-white font-bold text-base shadow border border-[#6c4ad6] hover:bg-[#8f5fff] transition-all" style={{ boxShadow: '0 2px 8px 0 #6c4ad644' }}>Sign Up</Link>
+          </div>
         </div>
       </nav>
-      <div className="content" data-scroll-section data-scroll-speed="1">
-        <div className="quote-container">
-          <div className="caption">Your Anti-Productivity Tool</div>
-          <div className="quote" data-scroll data-scroll-speed="-1"><span data-scroll data-scroll-repeat data-scroll-speed="5" data-scroll-delay="0.3" data-scroll-position="top">A</span>I-Powered<br />Back Office</div>
-          <div className="author">Digipod is the first anti-producitvity tool for creatives. <br /> We dont help hustle - we help you stop. Automate emails, invoices, updates, client chaos so you can finally get back to your craft.</div>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="https://forms.gle/2j3DcMv9HyxzeDqi8" target="_blank" className="btn"><span>Join Waitlist &#8594;</span></a>
+
+      {/* Hero Section */}
+      <section className="relative w-full flex flex-col items-center justify-center text-center py-28 px-4 overflow-hidden" style={{ minHeight: '70vh' }}>
+        {/* 3JS Wave Background */}
+        <div id="container" className="absolute inset-0 w-full h-full z-0" style={{ pointerEvents: 'none' }} />
+        {/* Optionally, remove or darken decorative overlays for a pure midnight look */}
+        <div className="relative z-20 flex flex-col items-center justify-center w-full">
+          <h2 className="text-lg font-semibold mb-4 text-[#FFD600] tracking-widest uppercase drop-shadow">Your Anti-Productivity Tool</h2>
+          <h1 className="boldonse text-5xl md:text-7xl mb-6 leading-tight bg-gradient-to-r from-[#a18fff] via-[#6e3bbd] to-[#4b217a] bg-clip-text text-transparent animate-fade-in">AI-POWERED<br />BACK OFFICE</h1>
+          <p className="max-w-2xl mx-auto text-lg text-[#e0d6ff] mb-10 animate-fade-in delay-100">
+            Digipod is the first anti productivity tool for creatives.<br />We don&apos;t help hustle - we help you stop. Automate emails, invoices, updates, client chaos so you can finally get back to your craft.
+          </p>
+          <div className="flex flex-wrap gap-4 justify-center animate-fade-in delay-200">
+            <a href="https://forms.gle/2j3DcMv9HyxzeDqi8" target="_blank" rel="noopener noreferrer" className="bg-white text-[#1a1333] font-bold rounded-full px-8 py-3 shadow-lg hover:bg-gray-200 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-[#a18fff] border border-[#a18fff]">Join Waitlist →</a>
             <button
               type="button"
-              className="btn cta-button"
-              style={{ background: '#FFD600', color: '#23243a', fontWeight: 700, opacity: 0.88 }}
-              onClick={handleFoundersDeal}
-              disabled={!rzpReady}
+              onClick={handleRazorpay}
+              disabled={!razorpayLoaded || isRedirecting}
+              className="bg-[#FFD600] text-[#1a1333] font-bold rounded-full px-8 py-3 shadow-lg hover:bg-yellow-300 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-[#FFD600] border border-[#FFD600] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span>Unlock Founders deal</span>
+              {razorpayLoaded ? (isRedirecting ? "Redirecting..." : "Unlock Founders Deal") : "Loading..."}
             </button>
           </div>
-        </div>
-      </div>
-      <div className="custom-cursor"></div>
-      <div id="container" data-scroll-section="">
-        <canvas id="canvas"></canvas>
-        <div className="a-hole">
-          <canvas className="js-canvas"></canvas>
-          <div className="aura"></div>
-          <div className="overlay"></div>
-        </div>
-        <div id="controls" style={{ display: 'none' }}>
-          <button id="playButton">PLAY</button>
-        </div>
-        <div id="fps" style={{ display: 'none' }}>FPS: 0</div>
-      </div>
-      <section className="section-resource" data-scroll-section="">
-        <Image className="showcase-img" src="/showcase-latest.png" style={{ zIndex: 1000000 }} width={1372} height={1079} alt="" />
-      </section>
-      <section className="features" data-scroll-section="">
-        <div className="card card-before">
-          <div className="header">
-            <div className="header-row">
-              <div className="header-col">
-                <span className="price">Before DigiPod</span>
-                <ul className="lists">
-                  <li className="list"><svg width="50" height="50" fill="#ff0000"><circle cx="25" cy="25" r="23" /></svg><span>You spent 4 hours a day searching and replying to emails that could have been one sentence</span></li>
-                  <li className="list"><svg width="50" height="50" fill="#ff0000"><circle cx="25" cy="25" r="23" /></svg><span>Projects move forward only when you manually nudge them, remind clients and update timelines.</span></li>
-                  <li className="list"><svg width="50" height="50" fill="#ff0000"><circle cx="25" cy="25" r="23" /></svg><span>Clients derail your flow with randoms requests, scope creep, and 17 follow ups.</span></li>
-                </ul>
+          {isRedirecting && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+              <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-xl shadow-xl">
+                <svg className="animate-spin h-8 w-8 text-[#6c4ad6]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                <span className="text-[#1a1333] font-semibold text-lg">Redirecting to success page...</span>
               </div>
             </div>
-          </div>
+          )}
+          <Script
+            src="https://checkout.razorpay.com/v1/checkout.js"
+            strategy="afterInteractive"
+            onLoad={() => setRazorpayLoaded(true)}
+          />
         </div>
-        <div className="card card-after">
-          <div className="header-col">
-            <span className="price">After DigiPod</span>
-            <ul className="lists">
-              <li className="list"><svg width="20" height="20" fill="#fff"><circle cx="10" cy="10" r="8" /></svg><span>AI handles 90% of the client emails while you sip coffee and design in peace.</span></li>
-              <li className="list"><svg width="20" height="20" fill="#fff"><circle cx="10" cy="10" r="8" /></svg><span>DigiPod auto-advances projects based on smart email parsing and intent protection.</span></li>
-              <li className="list"><svg width="20" height="20" fill="#fff"><circle cx="10" cy="10" r="8" /></svg><span>Clients are onboarded, well communicated and filtered automatically - no interruptions, no nonsense.</span></li>
-            </ul>
+      </section>
+
+      {/* Dashboard Image Section */}
+      <section className="w-full flex justify-center py-20 relative overflow-hidden">
+        {/* Optionally, remove or darken dashboard section overlay for a pure midnight look */}
+        <Image src="/showcase-latest.png" width={900} height={700} alt="Dashboard Screenshot" className="rounded-3xl shadow-2xl max-w-full h-auto border-4 border-[#3a1c8d] animate-fade-in" />
+      </section>
+
+      {/* Before/After Section */}
+      <section className="w-full flex flex-col md:flex-row justify-center items-stretch gap-10 py-20 px-4">
+        <div className="bg-gradient-to-br from-[#1a1333] to-[#3a1c8d] rounded-3xl p-10 flex-1 max-w-md shadow-2xl border border-[#3a1c8d] hover:scale-105 transition-transform duration-300">
+          <h2 className="text-2xl font-bold mb-6 text-[#FFD600] tracking-wide">Before DigiPod</h2>
+          <ul className="space-y-5 text-[#ffb3b3] text-base font-medium">
+            <li>❌ You spent 4 hours a day searching and replying to emails that could have been one sentence</li>
+            <li>❌ Projects move forward only when you manually nudge them, remind clients and update timelines.</li>
+            <li>❌ Clients derail your flow with random requests, scope creep, and 17 follow ups.</li>
+          </ul>
+        </div>
+        <div className="bg-gradient-to-br from-[#2d186a] to-[#4b217a] rounded-3xl p-10 flex-1 max-w-md shadow-2xl border border-[#3a1c8d] hover:scale-105 transition-transform duration-300">
+          <h2 className="text-2xl font-bold mb-6 text-[#6ee7b7] tracking-wide">After DigiPod</h2>
+          <ul className="space-y-5 text-[#b3ffb3] text-base font-medium">
+            <li>✅ AI handles 90% of the client emails while you sip coffee and design in peace.</li>
+            <li>✅ DigiPod auto-advances projects based on smart email parsing and intent protection.</li>
+            <li>✅ Clients are onboarded, well communicated and filtered automatically - no interruptions, no nonsense.</li>
+          </ul>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="w-full flex flex-col items-center py-24 px-4">
+        <h2 className="text-4xl font-extrabold mb-16 text-center bg-gradient-to-r from-[#a18fff] via-[#6e3bbd] to-[#4b217a] bg-clip-text text-transparent tracking-tight animate-fade-in">Features</h2>
+        <div className="flex flex-col items-center gap-16 w-full max-w-4xl">
+          {/* Feature 1 */}
+          <div className="flex flex-col md:flex-row items-center bg-gradient-to-br from-[#18122b] to-[#232042] rounded-3xl p-0 md:p-8 w-full shadow-2xl border border-[#3a1c8d] feature-card-glow">
+            {/* Left: Text */}
+            <div className="flex-1 flex flex-col items-start justify-center p-8 md:p-12">
+              <span className="bg-[#232042] text-[#FFD600] font-bold rounded-full px-5 py-2 mb-6 text-lg shadow border border-[#FFD600]">01</span>
+              <h3 className="text-3xl md:text-4xl font-extrabold mb-4 text-white">AI powered<br/>Client Inbox</h3>
+              <p className="text-[#bcb8d8] text-lg mb-0 md:mb-0 font-medium">Your chaotic inbox, reimagined.<br/>Lets AI triage, respond and organise client comms so you never miss a beat.</p>
+            </div>
+            {/* Right: Image */}
+            <div className="flex-1 flex items-center justify-center p-8 md:p-0">
+              <Image src="/inbox.png" alt="Inbox" width={400} height={260} className="rounded-2xl shadow-lg border-2 border-[#232042] bg-[#232042]" />
+            </div>
+          </div>
+          {/* Feature 2 */}
+          <div className="flex flex-col md:flex-row-reverse items-center bg-gradient-to-br from-[#18122b] to-[#232042] rounded-3xl p-0 md:p-8 w-full shadow-2xl border border-[#3a1c8d] feature-card-glow">
+            <div className="flex-1 flex flex-col items-start justify-center p-8 md:p-12">
+              <span className="bg-[#232042] text-[#FFD600] font-bold rounded-full px-5 py-2 mb-6 text-lg shadow border border-[#FFD600]">02</span>
+              <h3 className="text-3xl md:text-4xl font-extrabold mb-4 text-white">Automatic Phase Detection & Progression</h3>
+              <p className="text-[#bcb8d8] text-lg mb-0 md:mb-0 font-medium">No more manually updating project statuses.<br/><span className="text-white">Digipod tracks progress and nudges</span> phases forward - automatically.</p>
+            </div>
+            <div className="flex-1 flex items-center justify-center p-8 md:p-0">
+              <Image src="/progression.png" alt="Progression" width={400} height={260} className="rounded-2xl shadow-lg border-2 border-[#232042] bg-[#232042]" />
+            </div>
+          </div>
+          {/* Feature 3 */}
+          <div className="flex flex-col md:flex-row items-center bg-gradient-to-br from-[#18122b] to-[#232042] rounded-3xl p-0 md:p-8 w-full shadow-2xl border border-[#3a1c8d] feature-card-glow">
+            <div className="flex-1 flex flex-col items-start justify-center p-8 md:p-12">
+              <span className="bg-[#232042] text-[#FFD600] font-bold rounded-full px-5 py-2 mb-6 text-lg shadow border border-[#FFD600]">03</span>
+              <h3 className="text-3xl md:text-4xl font-extrabold mb-4 text-white">Intelligence that gets Smarter</h3>
+              <p className="text-[#bcb8d8] text-lg mb-0 md:mb-0 font-medium">Our AI learns from every project, client message and edge case.<br/><span className="text-white">Fewer Fumbles.</span> Sharper Suggestions. Always levelling up.</p>
+            </div>
+            <div className="flex-1 flex items-center justify-center p-8 md:p-0">
+              <Image src="/AI.png" alt="AI" width={400} height={260} className="rounded-2xl shadow-lg border-2 border-[#232042] bg-[#232042]" />
+            </div>
+          </div>
+          {/* Feature 4 */}
+          <div className="flex flex-col md:flex-row-reverse items-center bg-gradient-to-br from-[#18122b] to-[#232042] rounded-3xl p-0 md:p-8 w-full shadow-2xl border border-[#3a1c8d] feature-card-glow">
+            <div className="flex-1 flex flex-col items-start justify-center p-8 md:p-12">
+              <span className="bg-[#232042] text-[#FFD600] font-bold rounded-full px-5 py-2 mb-6 text-lg shadow border border-[#FFD600]">04</span>
+              <h3 className="text-3xl md:text-4xl font-extrabold mb-4 text-white">No more scope Marathons</h3>
+              <p className="text-[#bcb8d8] text-lg mb-0 md:mb-0 font-medium">Detect scope creep before it becomes a crisis.<br/><span className="text-white">Digipod sets, defends</span> and enforces boundaries - without the awkward convos.</p>
+            </div>
+            <div className="flex-1 flex items-center justify-center p-8 md:p-0">
+              <Image src="/marathon.png" alt="Marathon" width={400} height={260} className="rounded-2xl shadow-lg border-2 border-[#232042] bg-[#232042]" />
+            </div>
+          </div>
+          {/* Feature 5 */}
+          <div className="flex flex-col md:flex-row items-center bg-gradient-to-br from-[#18122b] to-[#232042] rounded-3xl p-0 md:p-8 w-full shadow-2xl border border-[#3a1c8d] feature-card-glow">
+            <div className="flex-1 flex flex-col items-start justify-center p-8 md:p-12">
+              <span className="bg-[#232042] text-[#FFD600] font-bold rounded-full px-5 py-2 mb-6 text-lg shadow border border-[#FFD600]">05</span>
+              <h3 className="text-3xl md:text-4xl font-extrabold mb-4 text-white">Built to integrate, Not isolate</h3>
+              <p className="text-[#bcb8d8] text-lg mb-0 md:mb-0 font-medium">Digipod plugs into your existing workflows -<br/><span className="text-white">from Gmail to Notion to Slack.</span> No rip and replace required.</p>
+            </div>
+            <div className="flex-1 flex items-center justify-center p-8 md:p-0">
+              <Image src="/mail.png" alt="Mail" width={400} height={260} className="rounded-2xl shadow-lg border-2 border-[#232042] bg-[#232042]" />
+            </div>
           </div>
         </div>
       </section>
-      <section className="extras-section" data-scroll-section="">
-        <div className="feature-card">
-          <div className="mist"></div>
-          <div className="tilt">
-            <div className="feature-content">
-              <span className="tag">01</span>
-              <h2>AI powered <br />Client Inbox</h2>
-              <p>Your chaotic inbox, reimagined. <br />Lets AI triage, respond and organise client comms so you never miss a beat.</p>
-            </div>
-            <div className="card-img">
-              <Image src="/inbox.png" alt="" width={500} height={540} />
-            </div>
-          </div>
-        </div>
-        <div className="feature-card">
-          <div className="mist"></div>
-          <div className="tilt">
-            <div className="card-img">
-              <Image src="/progression.png" alt="" width={500} height={540} />
-            </div>
-            <div className="feature-content">
-              <span className="tag">02</span>
-              <h2>Automatic Phase Detection & <br />Progression</h2>
-              <p>No more manually updating project statuses. <span>Digipod tracks progress and nudges</span>. phases forward - automatically. </p>
-            </div>
-          </div>
-        </div>
-        <div className="feature-card">
-          <div className="mist"></div>
-          <div className="tilt">
-            <div className="feature-content">
-              <span className="tag">03</span>
-              <h2>Intelligence that gets Smarter with every task it handles</h2>
-              <p>Our AI learns from every project, client message and edge case. <span>Fewer Fumbles.</span>. Sharper Suggestions. Always levelling up. </p>
-            </div>
-            <div className="card-img">
-              <Image src="/AI.png" alt="" width={500} height={540} />
-            </div>
-          </div>
-        </div>
-        <div className="feature-card">
-          <div className="mist"></div>
-          <div className="tilt">
-            <div className="card-img">
-              <Image src="/marathon.png" alt="" width={500} height={540} />
-            </div>
-            <div className="feature-content">
-              <span className="tag">04</span>
-              <h2>No more scope <br />Marathons</h2>
-              <p>Detect scope creep before it becomes a crisis. <span>Digipod sets, defends</span> and enforces boundaries - without the awkward convos.</p>
-            </div>
-          </div>
-        </div>
-        <div className="feature-card">
-          <div className="mist"></div>
-          <div className="tilt">
-            <div className="feature-content">
-              <span className="tag">05</span>
-              <h2>Built to integrate, <br />Not isolate </h2>
-              <p>Digipod plugs into your existing workflows -<span>from Gmail to Notion to Slack.</span> No rip and replace required.</p>
-            </div>
-            <div className="card-img">
-              <Image src="/mail.png" alt="" width={500} height={540} />
-            </div>
-          </div>
+
+      {/* Pricing Section */}
+      <section className="w-full flex flex-col items-center py-24 px-4">
+        <h2 className="text-4xl font-extrabold mb-10 text-center bg-gradient-to-r from-[#a18fff] via-[#6e3bbd] to-[#4b217a] bg-clip-text text-transparent tracking-tight animate-fade-in">Be one of the first 100 to own the AI Back Office for your creative work</h2>
+        <div className="bg-gradient-to-br from-[#2d186a] to-[#3a1c8d] rounded-3xl p-12 flex flex-col items-center shadow-2xl max-w-md w-full border border-[#3a1c8d] animate-fade-in">
+          <h3 className="text-2xl font-bold mb-2 text-[#FFD600]">Early Access</h3>
+          <p className="text-5xl font-extrabold mb-4"><span className="text-[#FFD600]">INR 400</span> <span className="text-lg line-through text-[#a18fff] ml-2">INR 3500</span></p>
+          <ul className="text-[#e0d6ff] text-lg mb-8 space-y-3">
+            <li>✔️ Get Early Access + 3 Months Free</li>
+            <li>✔️ Lifetime Discount Post Launch</li>
+            <li>✔️ Your feature requests get top priority</li>
+          </ul>
+          <button
+            type="button"
+            onClick={handleRazorpay}
+            disabled={!razorpayLoaded || isRedirecting}
+            className="bg-[#FFD600] text-[#1a1333] font-bold rounded-full px-10 py-4 shadow-lg hover:bg-yellow-300 transition-transform transform hover:scale-105 w-full text-center focus:ring-2 focus:ring-[#FFD600] border border-[#FFD600] disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {razorpayLoaded ? (isRedirecting ? "Redirecting..." : "Pre-order Now") : "Loading..."}
+          </button>
         </div>
       </section>
-      <section className="pricing" data-scroll-section>
-        <h1 className="pricing-title"><span className="pricing-title-main">Be one of the first 100</span><br />to own the AI Back Office for your creative work</h1>
-        <div className="card-container" id="cardContainer">
-          <div className="card-pricing">
-            <h2 className="card-title">Early Access</h2>
-            <p className="card-price">
-              <span className="currency">INR</span>400<span className="text-3xl align-baseline"></span>
-              <span className="period">INR 3500</span>
-            </p>
-            <ul className="features-list">
-              <li><svg className="rotating-disc-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" /></svg>Get Early Access + 3 Months Free</li>
-              <li><svg className="rotating-disc-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" /></svg>Lifetime Discount Post Launch</li>
-              <li><svg className="rotating-disc-svg" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" /></svg>Your features requrests get top priority</li>
-            </ul>
-            <a href="https://rzp.io/rzp/eccVpVH" target="_blank" className="cta-button">Pre-order Now</a>
-          </div>
-        </div>
-      </section>
-      <footer className="footer" data-scroll-section="">
-        <div className="footer-background"></div>
-        <a href="https://forms.gle/2j3DcMv9HyxzeDqi8" target="_blank" className="btn" data-scroll="" data-scroll-speed="1.5" data-scroll-delay="0.5"><span>Get Early Access &#8594;</span></a>
-        <div id="spiral"></div>
-        <div className="footer-bottom">
-          <a href="/privacy-policy.html" className="footer-link" target="_blank">Privacy Policy</a>
-        </div>
+
+      {/* Footer */}
+      <footer className="w-full flex flex-col items-center justify-center py-14 border-t border-[#3a1c8d] mt-auto relative overflow-hidden">
+        {/* Optionally, remove or darken footer overlay for a pure midnight look */}
+        <a href="https://forms.gle/2j3DcMv9HyxzeDqi8" target="_blank" rel="noopener noreferrer" className="bg-white text-[#1a1333] font-bold rounded-full px-8 py-3 shadow-lg hover:bg-gray-200 transition mb-6 animate-fade-in border border-[#a18fff]">Get Early Access →</a>
+        <div className="text-[#a18fff] text-base animate-fade-in">&copy; {new Date().getFullYear()} Digipod. All rights reserved. <a href="/privacy-policy.html" target="_blank" className="underline ml-2">Privacy Policy</a></div>
       </footer>
-    </div>
+    </main>
   );
 } 

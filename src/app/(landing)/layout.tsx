@@ -1,7 +1,6 @@
-import '../style.css';
-import '../locomotive.css';
 import Script from 'next/script';
 import type { Metadata } from "next";
+import SmoothScrollWrapper from './SmoothScrollWrapper';
 
 export const metadata: Metadata = {
   title: "Digipod – Anti-Productivity SaaS",
@@ -12,10 +11,15 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
   return (
     <html lang="en">
       <head>
-        {/* Landing-specific scripts/styles */}
+        {/* 3JS and dat.GUI for animated wave background */}
+        <Script src="https://unpkg.com/three@0.155.0/build/three.min.js" strategy="beforeInteractive" />
+        <Script src="/dat.gui.min.js" strategy="beforeInteractive" />
+        <Script src="/locomotive.min.js" strategy="beforeInteractive" />
       </head>
-      <body>
-        {children}
+      <body style={{ fontFamily: 'Inter, Sora, sans-serif' }}>
+        <SmoothScrollWrapper>
+          {children}
+        </SmoothScrollWrapper>
         <Script src="/script.js" strategy="afterInteractive" />
       </body>
     </html>
