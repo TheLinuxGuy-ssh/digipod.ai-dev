@@ -97,8 +97,8 @@
   will-change: transform;
 }
 
-.dg {
-  display: none;
+.dg, .ac, .close-button {
+  display: none !important;
 }
 
 .featuresVid {

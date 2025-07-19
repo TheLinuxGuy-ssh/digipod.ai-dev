@@ -1329,7 +1329,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
         </div>
         {/* Projects Grid */}
         <div className={editProject ? 'transition-all duration-300 filter blur-md pointer-events-none select-none' : ''}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {Array.isArray(projectsData) && projectsData.map((project, idx) => (
               <ProjectCard
                 key={project.id || idx}
