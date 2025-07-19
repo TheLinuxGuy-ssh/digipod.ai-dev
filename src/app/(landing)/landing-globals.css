@@ -26,12 +26,8 @@
 }
 
 html, body {
-  font-family: 'Inter', sans-serif;
-  position: static;
-  height: auto;
+  background: #1a1333 !important;
   min-height: 100vh;
-  width: 100%;
-  overflow-x: hidden;
 }
 
 body::before {
