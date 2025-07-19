@@ -208,6 +208,7 @@ export default function LandingPage() {
       <section className="w-full flex flex-col items-center py-24 px-4">
         <h2 className="text-4xl font-extrabold mb-10 text-center bg-gradient-to-r from-[#a18fff] via-[#6e3bbd] to-[#4b217a] bg-clip-text text-transparent tracking-tight animate-fade-in">Be one of the first 100 to own the AI Back Office for your creative work</h2>
         <div className="bg-gradient-to-br from-[#2d186a] to-[#3a1c8d] rounded-3xl p-12 flex flex-col items-center shadow-2xl max-w-md w-full border border-[#3a1c8d] animate-fade-in">
+          <span className="mb-4 text-base font-extrabold uppercase tracking-wider text-white bg-gradient-to-r from-[#FFD600] to-[#6c4ad6] px-6 py-2 rounded-full shadow-lg transition-transform transform hover:scale-105 animate-pulse">Limited time offer</span>
           <h3 className="text-2xl font-bold mb-2 text-[#FFD600]">Early Access</h3>
           <p className="text-5xl font-extrabold mb-4"><span className="text-[#FFD600]">INR 400</span> <span className="text-lg line-through text-[#a18fff] ml-2">INR 3500</span></p>
           <ul className="text-[#e0d6ff] text-lg mb-8 space-y-3">
