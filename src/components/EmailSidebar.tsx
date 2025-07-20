@@ -280,6 +280,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
           >
             <LockClosedIcon className="h-5 w-5" />
             {!collapsed && 'Payments'}
+            {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
           </button>
           <button
             className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-500 font-semibold transition text-sm w-full cursor-not-allowed opacity-50 bg-gray-800`}
@@ -287,6 +288,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
           >
             <LockClosedIcon className="h-5 w-5" />
             {!collapsed && 'Leads'}
+            {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
           </button>
           <button
             className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-500 font-semibold transition text-sm w-full cursor-not-allowed opacity-50 bg-gray-800`}
@@ -464,9 +466,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
               <div className="font-semibold text-sm text-blue-100">
                 {currentUser?.displayName || currentUser?.email || 'Your Name'}
               </div>
-              <div className="text-xs text-gray-400">
-                {currentUser?.email || 'you@email.com'}
-              </div>
+
             </div>
           )}
         </div>

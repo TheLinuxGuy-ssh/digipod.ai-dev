@@ -13,6 +13,7 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
       <head>
         {/* 3JS and dat.GUI for animated wave background */}
         <Script src="/dat.gui.min.js" strategy="beforeInteractive" />
+        <Script src="https://unpkg.com/three@0.160.0/build/three.min.js" strategy="beforeInteractive" />
         <Script src="/locomotive.min.js" strategy="beforeInteractive" />
       </head>
       <body style={{ fontFamily: 'Inter, Sora, sans-serif' }}>
