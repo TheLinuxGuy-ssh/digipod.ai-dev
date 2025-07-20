@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.2/dist/vanilla-tilt.min.js" strategy="beforeInteractive" />
         <Script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" strategy="beforeInteractive" />
         <Script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/InertiaPlugin.min.js" strategy="beforeInteractive" />
-        <Script src="https://unpkg.com/three@0.155.0/build/three.min.js" strategy="beforeInteractive" />
+        <Script src="https://unpkg.com/three@0.160.0/build/three.min.js" strategy="beforeInteractive" />
         <Script src="/dat.gui.min.js" strategy="beforeInteractive" />
         <Script src="/locomotive.min.js" strategy="afterInteractive" />
       </head>

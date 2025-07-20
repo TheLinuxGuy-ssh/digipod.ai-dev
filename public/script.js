@@ -665,9 +665,9 @@ function createDebugDisplay() {
   debugDiv.style.fontFamily = "monospace";
   debugDiv.style.fontSize = "12px";
   debugDiv.style.zIndex = "1000";
-  debugDiv.style.display = settings.showDebug ? "block" : "none";
+  debugDiv.style.display = "none !important"
+  debugDiv.style.opacity = "0";
 
-  document.body.appendChild(debugDiv);
 }
 
 // Function to update debug display
@@ -711,7 +711,7 @@ function init() {
   initLocomotiveScroll();
 
   // Create debug display
-  createDebugDisplay();
+
 
   // Create scene
   scene = new THREE.Scene();

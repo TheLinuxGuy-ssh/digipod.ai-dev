@@ -12,7 +12,6 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
     <html lang="en">
       <head>
         {/* 3JS and dat.GUI for animated wave background */}
-        <Script src="https://unpkg.com/three@0.155.0/build/three.min.js" strategy="beforeInteractive" />
         <Script src="/dat.gui.min.js" strategy="beforeInteractive" />
         <Script src="/locomotive.min.js" strategy="beforeInteractive" />
       </head>

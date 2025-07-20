@@ -74,7 +74,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative w-full flex flex-col items-center justify-center text-center py-28 px-4 overflow-hidden" style={{ minHeight: '70vh' }}>
+      <section className="relative w-full flex flex-col items-center justify-center text-center py-28 px-4 overflow-hidden" style={{ minHeight: '91.25vh' }}>
         {/* 3JS Wave Background */}
         <div id="container" className="absolute inset-0 w-full h-full z-0" style={{ pointerEvents: 'none' }} />
         {/* Optionally, remove or darken decorative overlays for a pure midnight look */}
