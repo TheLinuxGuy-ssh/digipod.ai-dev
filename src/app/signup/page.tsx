@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import Image from 'next/image';
 
 export default function SignUpPage() {
@@ -12,6 +13,7 @@ export default function SignUpPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
+  const [name, setName] = useState('');
   const router = useRouter();
 
   // Check if user is already signed in
@@ -43,11 +45,23 @@ export default function SignUpPage() {
     setError('');
     try {
       // 1. Check code using API
-      const redeemRes = await fetch('/api/redeem-license', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: signupCode.trim().toUpperCase() }),
-      });
+      const code = signupCode.trim().toUpperCase();
+      let redeemRes;
+
+      if (code === process.env.NEXT_PUBLIC_UNIVERSAL_LICENSE_KEY) {
+        redeemRes = await fetch('/api/universal-license', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, email }),
+        });
+      } else {
+        redeemRes = await fetch('/api/redeem-license', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+      }
+
       const redeemData = await redeemRes.json();
       if (!redeemData.success) {
         setError(redeemData.error || 'Invalid or already used signup code.');
@@ -57,7 +71,13 @@ export default function SignUpPage() {
       // 2. Proceed with Firebase Auth signup
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      // 3. Post to onboard collection for analytics
+      // 3. Save name to Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        name,
+        email: user.email,
+        createdAt: user.metadata.creationTime || new Date().toISOString(),
+      }, { merge: true });
+      // 4. Post to onboard collection for analytics
       await fetch('/api/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -111,6 +131,14 @@ export default function SignUpPage() {
           <Image src="/digilogo.png" alt="Digipod Logo" width={120} height={40} />
         </div>
         <form onSubmit={handleSignUp} className="flex flex-col gap-4">
+          <input
+            type="text"
+            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-800 text-white placeholder-gray-400 border-gray-700"
+            placeholder="Name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            required
+          />
           <input
             type="email"
             className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-800 text-white placeholder-gray-400 border-gray-700"

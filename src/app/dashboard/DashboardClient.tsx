@@ -102,9 +102,9 @@ function ProjectCard({ project, onDelete, onEdit }: { project: Project, onDelete
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
   // Use the same date parsing logic as elsewhere
-  const getDateFromEmail = (dateVal: any): Date => {
-    if (dateVal && typeof dateVal === 'object' && typeof dateVal.toDate === 'function') {
-      return dateVal.toDate();
+  const getDateFromEmail = (dateVal: FirebaseFirestore.Timestamp | Date | string): Date => {
+    if (dateVal && typeof dateVal === 'object' && typeof (dateVal as { toDate?: unknown }).toDate === 'function') {
+      return (dateVal as { toDate: () => Date }).toDate();
     }
     if (dateVal instanceof Date) return dateVal;
     if (typeof dateVal === 'string') return new Date(dateVal);
@@ -151,7 +151,7 @@ function ProjectCard({ project, onDelete, onEdit }: { project: Project, onDelete
   );
 }
 
-function ExpandableCard({ expanded, onClick, title, icon, summary, content, loading, gradientClass }: {
+function ExpandableCard({ expanded, onClick, title, icon, summary, content, loading, gradientClass, isGmailConnected }: {
   expanded: boolean;
   onClick: () => void;
   title: React.ReactNode;
@@ -160,6 +160,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
   content: React.ReactNode;
   loading: boolean;
   gradientClass: string;
+  isGmailConnected: boolean;
 }) {
   return (
     <div
@@ -170,7 +171,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
         `${gradientClass} rounded-2xl shadow-xl p-8 flex flex-col backdrop-blur-md  card-bg  items-start min-h-[180px] border-1 h-full relative  transition-all duration-300 outline-none focus:ring-4 focus:ring-blue-400/50 hover:scale-[1.02] hover:shadow-2xl border-2 border-digi hover:border-blue-400 ${expanded ? 'ring-2 ring-blue-300/30 border-blue-400' : ''} ${loading ? 'animate-pulse' : ''}`
       }
       style={{ minHeight: 180, height: '100%', cursor: 'pointer' }}
-      onClick={onClick}
+      onClick={!isGmailConnected ? () => {} : onClick}
       onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onClick()}
     >
       {/* Loading overlay */}
@@ -192,7 +193,11 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
         />
         </div>
       </div>
-      {loading ? (
+      {!isGmailConnected ? (
+        <div className="w-full flex flex-col items-center justify-center">
+            <p className="text-white text-lg mb-4">Please connect your Gmail account to use this feature.</p>
+        </div>
+      ) : loading ? (
         <div className="w-full space-y-3">
           {/* Skeleton loading for summary */}
           <div className="space-y-2">
@@ -224,7 +229,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
 
 
 
-export default function DashboardClient({ summary }: { summary?: unknown }) {
+export default function DashboardClient() {
   const [name, setName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -258,6 +263,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
   // Add state for expanded cards
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   // Add state for Gmail connection
+  const [isGmailConnected, setIsGmailConnected] = useState(false);
   const [selectedDateEvents, setSelectedDateEvents] = useState<{ date: Date; events: { title: string; start: Date; end: Date }[] } | null>(null);
   // Calendar state (must be at top level)
   const [calendarEvents, setCalendarEvents] = useState<{ title: string; date: string }[]>([]);
@@ -267,12 +273,22 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
   const [todos, setTodos] = useState<{ task: string; dueDate?: string; type: 'project' | 'calendar'; projectName?: string; confidence?: number }[]>([]);
 
   // AI Drafts state
-  const [selectedDraft, setSelectedDraft] = useState<any>(null);
-  const [editableDraft, setEditableDraft] = useState<any>(null);
-  const [clientMessages, setClientMessages] = useState<any[]>([]);
-  const [parentEmail, setParentEmail] = useState<any>(null);
+  const [selectedDraft, setSelectedDraft] = useState<DashboardEmail | null>(null);
+  const [editableDraft, setEditableDraft] = useState<DashboardEmail | null>(null);
+  const [clientMessages, setClientMessages] = useState<DashboardEmail[]>([]);
+  const [parentEmail, setParentEmail] = useState<DashboardEmail | null>(null);
   const [aiSummary, setAiSummary] = useState<string>('');
-  const [summaryData, setSummaryData] = useState<any>(null);
+  const [summaryData, setSummaryData] = useState<{
+    summary?: {
+      phaseAdvances?: number;
+      newDrafts?: number;
+      newTodos?: number;
+      processedEmails?: number;
+      aiActivities?: number;
+      highImpactChanges?: number;
+    };
+    lastUpdated?: string;
+  } | null>(null);
 
   // Helper to toggle card expansion
   const handleCardToggle = (card: string) => {
@@ -307,7 +323,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
   };
 
   // Helper function to open draft modal
-  const openDraftModal = (draft: any) => {
+  const openDraftModal = (draft: DashboardEmail) => {
     setSelectedDraft(draft);
     setEditableDraft({ ...draft });
   };
@@ -331,8 +347,11 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
         setAuthChecking(false);
         // No need to fetchProjects here, SWR will handle it
         fetchGmailUser().then((user: { email?: string, gmailConnected?: boolean } | null) => {
-          if (user && user.email && user.gmailConnected) {
-            setToast(`Gmail connected: ${user.email}`);
+          if (user) {
+            setIsGmailConnected(user.gmailConnected || false);
+            if (user.email && user.gmailConnected) {
+              setToast(`Gmail connected: ${user.email}`);
+            }
           }
         });
       }
@@ -466,11 +485,11 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
       // Process AI changes summary data
       console.log('Processing summary data:', summaryData);
       if (summaryData && typeof summaryData === 'object' && 'error' in summaryData) {
-        console.log('Summary data has error:', summaryData.error);
+        console.log('Summary data has error:', (summaryData as { error: string }).error);
         setAiSummary("Unable to load AI changes summary.");
         setLoadingSummary(false);
       } else {
-        const summaryInfo = summaryData as { summaryText?: string } || {};
+        const summaryInfo = summaryData as { summaryText?: string, summary?: any, lastUpdated?: string } || {};
         console.log('Summary info:', summaryInfo);
         setAiSummary(summaryInfo.summaryText || "No AI changes detected.");
         setSummaryData(summaryInfo);
@@ -478,8 +497,8 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
       }
 
       // Extract tasks from AI drafts
-      const draftTasks = (aiDraftsData as any)?.drafts?.filter((draft: any) => draft.status === 'draft')
-        .map((draft: any) => ({
+      const draftTasks = (aiDraftsData as { drafts?: DashboardEmail[] })?.drafts?.filter((draft: DashboardEmail) => draft.status === 'draft')
+        .map((draft: DashboardEmail) => ({
           task: `Review AI draft: ${draft.subject || 'AI Draft'}`,
           type: 'project' as const,
           projectName: draft.clientEmail || 'Client',
@@ -509,8 +528,11 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
+      setIsGmailConnected(false);
       return;
     }
+    const data = await res.json();
+    setIsGmailConnected(data.gmailConnected || false);
   };
 
   useEffect(() => {
@@ -819,32 +841,32 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div className="flex justify-between">
                         <span>🚀 Phase Advances:</span>
-                        <span className="font-semibold text-green-400">{(summaryData as any).summary?.phaseAdvances || 0}</span>
+                        <span className="font-semibold text-green-400">{summaryData.summary?.phaseAdvances || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>📝 New AI Drafts:</span>
-                        <span className="font-semibold text-blue-400">{(summaryData as any).summary?.newDrafts || 0}</span>
+                        <span className="font-semibold text-blue-400">{summaryData.summary?.newDrafts || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>✅ New Todos:</span>
-                        <span className="font-semibold text-yellow-400">{(summaryData as any).summary?.newTodos || 0}</span>
+                        <span className="font-semibold text-yellow-400">{summaryData.summary?.newTodos || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>📧 Processed Emails:</span>
-                        <span className="font-semibold text-purple-400">{(summaryData as any).summary?.processedEmails || 0}</span>
+                        <span className="font-semibold text-purple-400">{summaryData.summary?.processedEmails || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>🤖 AI Activities:</span>
-                        <span className="font-semibold text-cyan-400">{(summaryData as any).summary?.aiActivities || 0}</span>
+                        <span className="font-semibold text-cyan-400">{summaryData.summary?.aiActivities || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>⚡ High Impact:</span>
-                        <span className="font-semibold text-red-400">{(summaryData as any).summary?.highImpactChanges || 0}</span>
+                        <span className="font-semibold text-red-400">{summaryData.summary?.highImpactChanges || 0}</span>
                       </div>
                     </div>
                     <div className="text-xs text-blue-300 mt-3 pt-3 border-t border-blue-700">
                       Last updated: {summaryData && typeof summaryData === 'object' && 'lastUpdated' in summaryData 
-                        ? new Date((summaryData as any).lastUpdated).toLocaleString() 
+                        ? new Date(summaryData.lastUpdated).toLocaleString() 
                         : 'Unknown'}
                     </div>
                   </div>
@@ -854,6 +876,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
           }
           loading={loadingSummary}
           gradientClass="bg-gradient-to-b from-cyan-800 to-fuchsia-800"
+          isGmailConnected={isGmailConnected}
         />
       </div>
       {/* Second row: To-Dos, Create Project, Drafted Replies */}
@@ -992,6 +1015,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
               }
               loading={loadingTodos}
               gradientClass=""
+              isGmailConnected={isGmailConnected}
             />
           </div>
           {/* Create New Project Widget */}
@@ -1100,7 +1124,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                   </div>
                 ) : (
                   <ul className="space-y-3 w-full max-h-60 overflow-y-auto">
-                    {aiDraftsData.drafts?.map((draft: any) => (
+                    {aiDraftsData.drafts?.map((draft: DashboardEmail) => (
                       <li key={draft.id} className="bg-white/10 rounded-lg p-4 border border-blue-200/10 hover:border-blue-300/20 transition-all">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
@@ -1119,9 +1143,9 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                                 openDraftModal(draft);
                               }}
                             >
-                              {draft.content && draft.content.length > 100 
-                                ? `${draft.content.substring(0, 100)}...` 
-                                : draft.content || 'AI generated draft content'
+                              {draft.body && draft.body.length > 100 
+                                ? `${draft.body.substring(0, 100)}...` 
+                                : draft.body || 'AI generated draft content'
                               }
                               <span className="text-blue-400 text-xs ml-2">(Click to view full)</span>
                             </div>
@@ -1132,7 +1156,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
                               <span>Status: {draft.status}</span>
                               <span>•</span>
                               <span>
-                                {draft.createdAt ? new Date(draft.createdAt).toLocaleDateString() : 'Recent'}
+                                {getDateFromEmail(draft.createdAt).toLocaleDateString()}
                               </span>
                             </div>
                           </div>
@@ -1181,6 +1205,7 @@ export default function DashboardClient({ summary }: { summary?: unknown }) {
               }
               loading={loadingDrafts}
               gradientClass=""
+              isGmailConnected={isGmailConnected}
             />
           </div>
         </div>

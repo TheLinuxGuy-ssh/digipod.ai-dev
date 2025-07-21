@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { EnvelopeIcon, CheckCircleIcon, ExclamationCircleIcon, ServerStackIcon, TrashIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, DocumentTextIcon, DocumentIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import FocusModeToggle from './FocusModeToggle';
 import Image from 'next/image';
 import ReactDOM from 'react-dom';
@@ -77,6 +79,8 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   const [focusMode, setFocusMode] = useState(false);
   const [gmailUser, setGmailUser] = useState<GmailUser | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [firestoreName, setFirestoreName] = useState<string | null>(null);
+  // No need for separate photoURL state; use currentUser.photoURL directly
   const connectGmailBtnRef = React.useRef<HTMLButtonElement>(null);
   const sidebarScrollRef = React.useRef<HTMLDivElement>(null);
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);
@@ -104,8 +108,23 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
 
   // Listen for Firebase auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      // Fetch Firestore name
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setFirestoreName(userDoc.data().name || null);
+          } else {
+            setFirestoreName(null);
+          }
+        } catch {
+          setFirestoreName(null);
+        }
+      } else {
+        setFirestoreName(null);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -233,16 +252,6 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      // Redirect to signin page
-      window.location.href = '/signin';
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
   // Add a handler for Gmail-only OAuth
   const handleGoogleConnect = async () => {
     const user = auth.currentUser;
@@ -278,7 +287,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
             className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-500 font-semibold transition text-sm w-full cursor-not-allowed opacity-50 bg-gray-800`}
             disabled
           >
-            <LockClosedIcon className="h-5 w-5" />
+            <DocumentTextIcon className="h-5 w-5" />
             {!collapsed && 'Payments'}
             {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
           </button>
@@ -286,7 +295,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
             className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-500 font-semibold transition text-sm w-full cursor-not-allowed opacity-50 bg-gray-800`}
             disabled
           >
-            <LockClosedIcon className="h-5 w-5" />
+            <DocumentTextIcon className="h-5 w-5" />
             {!collapsed && 'Leads'}
             {!collapsed && <LockClosedIcon className="h-4 w-4 ml-auto" />}
           </button>
@@ -322,7 +331,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
           {!gmailConnected && (
             <div className="relative w-full flex flex-col items-center">
               <button
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} bg-gray-800 hover:bg-gray-700 text-blue-300 font-semibold transition text-sm w-full`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} ${otherAccounts.length === 0 ? 'bg-blue-500 hover:bg-blue-600 text-white font-semibold transition text-sm w-full shadow-lg animate-pulse' : 'bg-gray-800 hover:bg-gray-700 text-blue-300 font-semibold transition text-sm w-full'}`}
                 onClick={handleGoogleConnect}
               >
                 <EnvelopeIcon className="h-5 w-5" />
@@ -457,14 +466,18 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
       {/* Profile/Help Section - sticky at bottom */}
       <div className={`sticky bottom-0 bg-gray-900 pt-6 border-t border-gray-800 flex flex-col gap-2 ${collapsed ? 'items-center' : ''}`} style={{ zIndex: 10 }}>
         <div className="flex items-center gap-2 justify-center">
-          <div className="w-8 h-8 bg-blue-900 flex items-center justify-center font-bold text-blue-200 text-sm">
-            {currentUser?.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 
-             currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'U'}
-          </div>
+          {/* Avatar - match settings page exactly */}
+          {currentUser?.photoURL ? (
+            <Image src={currentUser.photoURL} alt="Avatar" width={64} height={64} className="rounded-lg" />
+          ) : (
+            <div className="w-16 h-16 bg-green-500 rounded-lg flex items-center justify-center text-2xl font-bold">
+              {(firestoreName && firestoreName.charAt(0).toUpperCase()) || currentUser?.displayName?.charAt(0).toUpperCase() || 'U'}
+            </div>
+          )}
           {!collapsed && (
             <div>
               <div className="font-semibold text-sm text-blue-100">
-                {currentUser?.displayName || currentUser?.email || 'Your Name'}
+                {firestoreName || currentUser?.displayName || currentUser?.email || 'Your Name'}
               </div>
 
             </div>
@@ -472,9 +485,9 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
         </div>
         {!collapsed && (
           <div className="flex gap-3 mt-2 text-xs text-gray-400 justify-center">
-            <a href="#" className="hover:text-blue-400 transition">Settings</a>
+            <a href="/settings" className="hover:text-blue-400 transition">Settings</a>
             <a href="#" className="hover:text-blue-400 transition">Help</a>
-            <a href="#" className="hover:text-blue-400 transition" onClick={handleLogout}>Logout</a>
+            <a href="#" className="hover:text-blue-400 transition" onClick={async (e) => { e.preventDefault(); await signOut(auth); window.location.href = '/signin'; }}>Logout</a>
           </div>
         )}
         {/* Privacy Policy link */}
