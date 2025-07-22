@@ -855,38 +855,6 @@ export default function DashboardClient() {
                   </div>
                 )}
               </div>
-              {/* 2. In the header (right side, before the Calendar Icon), add: */}
-              <div className="relative">
-                <button
-                  className="p-2 rounded-full hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-400"
-                  onClick={() => setShowAISummary(v => !v)}
-                  aria-label="Show AI notifications"
-                >
-                  <SparklesIcon className="h-6 w-6 text-green-600" />
-                </button>
-                {showAISummary && (
-                  <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg p-4 z-50 border border-green-200">
-                    <h3 className="font-bold text-lg mb-2 text-green-700">AI Notifications</h3>
-                    <p className="text-gray-700 mb-2">{aiSummary || 'No AI changes detected.'}</p>
-                    {summaryData && typeof summaryData === 'object' && 'summary' in summaryData && (
-                      <div className="bg-green-50 rounded-lg p-3 space-y-2">
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div className="flex justify-between"><span>Phase Advances:</span><span className="font-semibold text-green-600">{summaryData.summary?.phaseAdvances || 0}</span></div>
-                          <div className="flex justify-between"><span>New AI Drafts:</span><span className="font-semibold text-green-600">{summaryData.summary?.newDrafts || 0}</span></div>
-                          <div className="flex justify-between"><span>New Todos:</span><span className="font-semibold text-green-600">{summaryData.summary?.newTodos || 0}</span></div>
-                          <div className="flex justify-between"><span>Processed Emails:</span><span className="font-semibold text-green-600">{summaryData.summary?.processedEmails || 0}</span></div>
-                          <div className="flex justify-between"><span>AI Activities:</span><span className="font-semibold text-green-600">{summaryData.summary?.aiActivities || 0}</span></div>
-                          <div className="flex justify-between"><span>High Impact:</span><span className="font-semibold text-green-600">{summaryData.summary?.highImpactChanges || 0}</span></div>
-                        </div>
-                        <div className="text-xs text-green-500 mt-3 pt-2 border-t border-green-200">
-                          Last updated: {summaryData?.lastUpdated ? new Date(summaryData.lastUpdated).toLocaleString() : 'Unknown'}
-                        </div>
-                      </div>
-                    )}
-                    <button onClick={() => setShowAISummary(false)} className="mt-4 text-green-600 hover:underline">Close</button>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -956,10 +924,8 @@ export default function DashboardClient() {
                         <span className="font-semibold text-red-400">{summaryData.summary?.highImpactChanges || 0}</span>
                       </div>
                     </div>
-                    <div className="text-xs text-blue-300 mt-3 pt-3 border-t border-blue-700">
-                      Last updated: {summaryData?.lastUpdated
-                        ? new Date(summaryData.lastUpdated).toLocaleString()
-                        : 'Unknown'}
+                    <div className="text-xs text-green-500 mt-3 pt-2 border-t border-green-200">
+                      Last updated: {summaryData?.lastUpdated ? new Date(summaryData.lastUpdated).toLocaleString() : 'Unknown'}
                     </div>
                   </div>
                 )}
