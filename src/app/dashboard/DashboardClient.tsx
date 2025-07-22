@@ -8,7 +8,7 @@ import PipAvatar from '@/components/PipAvatar';
 import AntiHustleMeter from '@/components/AntiHustleMeter';
 import useSWR from 'swr';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { SparklesIcon, CalendarDaysIcon, EnvelopeOpenIcon } from '@heroicons/react/24/solid';
+import { CalendarDaysIcon, EnvelopeOpenIcon } from '@heroicons/react/24/solid';
 import './calendar-dashboard.css'; // Custom styles for react-big-calendar
 import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -16,6 +16,8 @@ import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale/en-US';
 import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import { incrementMinutesSaved } from '../../lib/hustleMeter';
+// Restore this import:
+import { SparklesIcon } from '@heroicons/react/24/solid';
 
 console.log('Firebase config (dashboard):', auth.app.options);
 
@@ -30,6 +32,10 @@ interface Project {
   phaseHistory?: { id: string; phase: string; timestamp: string | Date }[];
   clientMessages?: { id: string; body: string; from: string; createdAt: string | Date }[];
   phases?: string[]; // Added for edit functionality
+  status: string;
+  parentId?: string;
+  trigger?: string;
+  gmailId?: string; // Added for Gmail ID
 }
 
 interface DashboardEmail {
@@ -47,6 +53,53 @@ interface DashboardEmail {
   parentId?: string;
   trigger?: string;
   gmailId?: string; // Added for Gmail ID
+}
+
+interface CalendarEvent {
+  title: string;
+  date: string;
+  description?: string;
+  id?: string;
+  end?: string;
+}
+
+interface CalendarEventsApiResponse {
+  events?: CalendarEvent[];
+  error?: string;
+}
+
+interface Todo {
+  task: string;
+  dueDate?: string;
+  type: 'project' | 'calendar';
+  projectName?: string;
+  confidence?: number;
+}
+
+interface TodosApiResponse {
+  todos?: Todo[];
+  error?: string;
+}
+
+interface AiDraftsApiResponse {
+  drafts?: DashboardEmail[];
+  error?: string;
+}
+
+interface SummaryMetrics {
+  phaseAdvances?: number;
+  newDrafts?: number;
+  newTodos?: number;
+  processedEmails?: number;
+  aiActivities?: number;
+  highImpactChanges?: number;
+}
+
+interface DashboardSummary {
+  summaryText?: string;
+  summary?: SummaryMetrics;
+  lastUpdated?: string;
+  error?: string;
 }
 
 const fetcher = async (url: string) => {
@@ -90,11 +143,15 @@ async function fetchGmailUser() {
 }
 
 // Helper to fetch with auth token
-async function fetchWithAuth(url: string): Promise<unknown> {
+async function fetchWithAuth<T>(url: string): Promise<T> {
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
   const token = await user.getIdToken();
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: `Request failed with status ${res.status}` }));
+    throw new Error(errorData.message || 'Unknown error');
+  }
   return res.json();
 }
 
@@ -290,6 +347,9 @@ export default function DashboardClient() {
     lastUpdated?: string;
   } | null>(null);
 
+  // 1. Add state at the top of DashboardClient:
+  const [showAISummary, setShowAISummary] = useState(false);
+
   // Helper to toggle card expansion
   const handleCardToggle = (card: string) => {
     setExpandedCard(expandedCard === card ? null : card);
@@ -391,22 +451,22 @@ export default function DashboardClient() {
     // Fetch actionable to-dos, AI drafts, and AI changes summary from backend
     console.log('Starting API calls for dashboard data...');
     Promise.all([
-      fetchWithAuth('/api/calendar-events').catch((err) => { console.log('Calendar API error:', err); return err; }),
-      fetchWithAuth('/api/client-todos').catch((err) => { console.log('Todos API error:', err); return err; }),
-      fetchWithAuth('/api/ai-drafts?status=draft&limit=10').catch((err) => { console.log('AI drafts API error:', err); return err; }),
-      fetchWithAuth('/api/dashboard/summary').catch((err) => { console.log('Dashboard summary API error:', err); return err; })
+      fetchWithAuth<CalendarEventsApiResponse>('/api/calendar-events').catch((err): CalendarEventsApiResponse => { console.log('Calendar API error:', err); return { error: (err as Error).message || 'Failed to load calendar events', events: [] }; }),
+      fetchWithAuth<TodosApiResponse>('/api/client-todos').catch((err): TodosApiResponse => { console.log('Todos API error:', err); return { error: (err as Error).message || 'Failed to load to-dos', todos: [] }; }),
+      fetchWithAuth<AiDraftsApiResponse>('/api/ai-drafts?status=draft&limit=10').catch((err): AiDraftsApiResponse => { console.log('AI drafts API error:', err); return { error: (err as Error).message || 'Failed to load AI drafts', drafts: [] }; }),
+      fetchWithAuth<DashboardSummary>('/api/dashboard/summary').catch((err): DashboardSummary => { console.log('Dashboard summary API error:', err); return { error: (err as Error).message || 'Failed to load dashboard summary' }; })
     ]).then(([calendarData, todosData, aiDraftsData, summaryData]) => {
-      let calendarEventsRaw: { title: string; date: string; description?: string; id?: string; end?: string }[] = [];
-      let todosRaw: { task: string; dueDate?: string; type: 'project' | 'calendar'; projectName?: string; confidence?: number }[] = [];
+      let calendarEventsRaw: CalendarEvent[] = [];
+      let todosRaw: Todo[] = [];
 
-      if (calendarData && typeof calendarData === 'object' && 'error' in calendarData) {
-        if (calendarData.error === 'Unauthorized') {
+      if (calendarData.error) {
+        if (calendarData.error.includes('Unauthorized')) {
           setCalendarError('You are not logged in or your session expired. Please log in and reconnect Google.');
           setToast('Google Calendar: Not authorized. Please log in and reconnect.');
-        } else if (calendarData.error === 'No Google token') {
+        } else if (calendarData.error.includes('No Google token')) {
           setCalendarError('Google account not connected. Please reconnect Google.');
           setToast('Google Calendar: Not connected. Please reconnect.');
-        } else if (calendarData.error === 'Google Calendar API error') {
+        } else if (calendarData.error.includes('Google Calendar API error')) {
           setCalendarError('Google Calendar API error. Try reconnecting Google.');
           setToast('Google Calendar: API error. Try reconnecting.');
         } else {
@@ -416,7 +476,7 @@ export default function DashboardClient() {
         setCalendarEvents([]);
         setLoadingCalendar(false);
       } else {
-        calendarEventsRaw = (calendarData as { events?: { title: string; date: string; description?: string; id?: string; end?: string }[] }).events || [];
+        calendarEventsRaw = calendarData.events || [];
         setCalendarEvents(calendarEventsRaw);
         setCalendarError(null);
         setLoadingCalendar(false);
@@ -444,19 +504,19 @@ export default function DashboardClient() {
         }
       }
 
-      if (todosData && typeof todosData === 'object' && 'error' in todosData) {
-        if (todosData.error === 'Unauthorized') {
+      if (todosData.error) {
+        if (todosData.error.includes('Unauthorized')) {
           setToast('To-Do list: Not authorized. Please log in.');
-        } else if (todosData.error === 'No Google token') {
+        } else if (todosData.error.includes('No Google token')) {
           setToast('To-Do list: Not connected. Please reconnect Google.');
-        } else if (todosData.error === 'Google Calendar API error') {
+        } else if (todosData.error.includes('Google Calendar API error')) {
           setToast('To-Do list: API error. Try reconnecting.');
         } else {
-          todosRaw = (todosData as { todos?: { task: string; dueDate?: string; type: 'project' | 'calendar'; projectName?: string; confidence?: number }[] }).todos || [];
+          todosRaw = todosData.todos || [];
         }
         setLoadingTodos(false);
       } else {
-        todosRaw = (todosData as { todos?: { task: string; dueDate?: string; type: 'project' | 'calendar'; projectName?: string; confidence?: number }[] }).todos || [];
+        todosRaw = todosData.todos || [];
         setLoadingTodos(false);
       }
 
@@ -473,23 +533,23 @@ export default function DashboardClient() {
         }));
 
       // Process AI drafts data
-      if (aiDraftsData && typeof aiDraftsData === 'object' && 'error' in aiDraftsData) {
+      if (aiDraftsData.error) {
         setAiDraftsData({ drafts: [] });
         setLoadingDrafts(false);
       } else {
-        const draftsData = aiDraftsData as { drafts?: any[] } || { drafts: [] };
+        const draftsData = aiDraftsData || { drafts: [] };
         setAiDraftsData({ drafts: draftsData.drafts || [] });
         setLoadingDrafts(false);
       }
 
       // Process AI changes summary data
       console.log('Processing summary data:', summaryData);
-      if (summaryData && typeof summaryData === 'object' && 'error' in summaryData) {
-        console.log('Summary data has error:', (summaryData as { error: string }).error);
+      if (summaryData.error) {
+        console.log('Summary data has error:', summaryData.error);
         setAiSummary("Unable to load AI changes summary.");
         setLoadingSummary(false);
       } else {
-        const summaryInfo = summaryData as { summaryText?: string, summary?: any, lastUpdated?: string } || {};
+        const summaryInfo = summaryData || {};
         console.log('Summary info:', summaryInfo);
         setAiSummary(summaryInfo.summaryText || "No AI changes detected.");
         setSummaryData(summaryInfo);
@@ -497,11 +557,11 @@ export default function DashboardClient() {
       }
 
       // Extract tasks from AI drafts
-      const draftTasks = (aiDraftsData as { drafts?: DashboardEmail[] })?.drafts?.filter((draft: DashboardEmail) => draft.status === 'draft')
+      const draftTasks = aiDraftsData.drafts?.filter((draft: DashboardEmail) => draft.status === 'draft')
         .map((draft: DashboardEmail) => ({
           task: `Review AI draft: ${draft.subject || 'AI Draft'}`,
           type: 'project' as const,
-          projectName: draft.clientEmail || 'Client',
+          projectName: draft.projectName || 'Client',
           confidence: 0.7
         })) || [];
       
@@ -795,6 +855,38 @@ export default function DashboardClient() {
                   </div>
                 )}
               </div>
+              {/* 2. In the header (right side, before the Calendar Icon), add: */}
+              <div className="relative">
+                <button
+                  className="p-2 rounded-full hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-400"
+                  onClick={() => setShowAISummary(v => !v)}
+                  aria-label="Show AI notifications"
+                >
+                  <SparklesIcon className="h-6 w-6 text-green-600" />
+                </button>
+                {showAISummary && (
+                  <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg p-4 z-50 border border-green-200">
+                    <h3 className="font-bold text-lg mb-2 text-green-700">AI Notifications</h3>
+                    <p className="text-gray-700 mb-2">{aiSummary || 'No AI changes detected.'}</p>
+                    {summaryData && typeof summaryData === 'object' && 'summary' in summaryData && (
+                      <div className="bg-green-50 rounded-lg p-3 space-y-2">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex justify-between"><span>Phase Advances:</span><span className="font-semibold text-green-600">{summaryData.summary?.phaseAdvances || 0}</span></div>
+                          <div className="flex justify-between"><span>New AI Drafts:</span><span className="font-semibold text-green-600">{summaryData.summary?.newDrafts || 0}</span></div>
+                          <div className="flex justify-between"><span>New Todos:</span><span className="font-semibold text-green-600">{summaryData.summary?.newTodos || 0}</span></div>
+                          <div className="flex justify-between"><span>Processed Emails:</span><span className="font-semibold text-green-600">{summaryData.summary?.processedEmails || 0}</span></div>
+                          <div className="flex justify-between"><span>AI Activities:</span><span className="font-semibold text-green-600">{summaryData.summary?.aiActivities || 0}</span></div>
+                          <div className="flex justify-between"><span>High Impact:</span><span className="font-semibold text-green-600">{summaryData.summary?.highImpactChanges || 0}</span></div>
+                        </div>
+                        <div className="text-xs text-green-500 mt-3 pt-2 border-t border-green-200">
+                          Last updated: {summaryData?.lastUpdated ? new Date(summaryData.lastUpdated).toLocaleString() : 'Unknown'}
+                        </div>
+                      </div>
+                    )}
+                    <button onClick={() => setShowAISummary(false)} className="mt-4 text-green-600 hover:underline">Close</button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -865,8 +957,8 @@ export default function DashboardClient() {
                       </div>
                     </div>
                     <div className="text-xs text-blue-300 mt-3 pt-3 border-t border-blue-700">
-                      Last updated: {summaryData && typeof summaryData === 'object' && 'lastUpdated' in summaryData 
-                        ? new Date(summaryData.lastUpdated).toLocaleString() 
+                      Last updated: {summaryData?.lastUpdated
+                        ? new Date(summaryData.lastUpdated).toLocaleString()
                         : 'Unknown'}
                     </div>
                   </div>
@@ -1113,7 +1205,8 @@ export default function DashboardClient() {
                           } else {
                             setToast('Failed to get status');
                           }
-                        } catch (error) {
+                        } catch (err) {
+                          console.error('Failed to get status:', err);
                           setToast('Error getting status');
                         }
                       }}
@@ -1131,7 +1224,7 @@ export default function DashboardClient() {
                             <div className="flex items-center gap-2 mb-2">
                               <span className="font-semibold text-blue-100 truncate">{draft.subject || 'AI Draft'}</span>
                               <span className="px-2 py-0.5 text-xs rounded bg-blue-700/60 text-blue-200 font-semibold">
-                                {draft.clientEmail || 'Client'}
+                                {draft.projectName || 'Client'}
                               </span>
                             </div>
                             
@@ -1151,7 +1244,7 @@ export default function DashboardClient() {
                             </div>
                             
                             <div className="flex items-center gap-2 text-xs text-blue-300">
-                              <span>To: {draft.clientEmail || 'Client'}</span>
+                              <span>To: {draft.projectName || 'Client'}</span>
                               <span>•</span>
                               <span>Status: {draft.status}</span>
                               <span>•</span>
