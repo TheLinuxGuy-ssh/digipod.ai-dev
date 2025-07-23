@@ -5,10 +5,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { ArrowLeftIcon, ChatBubbleLeftRightIcon, CheckCircleIcon, ClockIcon, EnvelopeIcon, UserCircleIcon, PaperAirplaneIcon, XMarkIcon, BoltIcon } from '@heroicons/react/24/outline';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeftIcon, EnvelopeIcon, UserCircleIcon, PaperAirplaneIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import useSWR from 'swr';
 import { incrementMinutesSaved } from '@/lib/hustleMeter';
+import { AnimatePresence, motion } from 'framer-motion';
+import { BoltIcon, ChatBubbleLeftRightIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 // Add interfaces at the top
 interface AiReplyVersion {
@@ -38,8 +39,6 @@ interface Email {
   status?: string; // Added for sent status
   to?: string; // Added for recipient
 }
-
-const DEFAULT_PHASES = ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY'];
 
 async function fetchProjectInbox(projectId: string, fromDate?: string, toDate?: string, sender?: string) {
   const user = auth.currentUser;
@@ -288,7 +287,6 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function ProjectDetailPage({ params }: { params: any }) {
   // All filter-related hooks must be at the very top, before any logic or early returns
-  const [filterClientEmail, setFilterClientEmail] = useState('');
   const [filteredInbox, setFilteredInbox] = useState<Email[]>([]);
   const [unsureAlert, setUnsureAlert] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
@@ -301,6 +299,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   const [emailFilterFromDate, setEmailFilterFromDate] = useState<string | undefined>(undefined);
   const [emailFilterToDate, setEmailFilterToDate] = useState<string | undefined>(undefined);
   const [clientNameInput, setClientNameInput] = useState('');
+  const [clientEmailInput, setClientEmailInput] = useState('');
   let id: string;
   if (typeof params?.then === 'function') {
     const unwrapped = React.use(params) as { id: string };
@@ -309,7 +308,6 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     id = params.id;
   }
   const { data: project, mutate } = useSWR(`/api/projects/${id}`, fetcher, { revalidateOnFocus: false });
-  const [advancing, setAdvancing] = useState(false);
   const [inbox, setInbox] = useState<Email[]>([]);
   const [showCustomResponse, setShowCustomResponse] = useState(false);
   const [selectedEmail] = useState<Email | null>(null);
@@ -337,8 +335,8 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   useEffect(() => {
     setAdvancePaid(project?.advancePaid ?? 0);
     setTotalAmount(project?.totalAmount ?? 0);
-    setPaymentStatus(project?.paymentStatus ?? 'pending');
-    setPaymentDueDate(project?.paymentDueDate ?? null);
+    setPaymentStatus(project.paymentStatus ?? 'pending');
+    setPaymentDueDate(project.paymentDueDate ?? null);
   }, [project]);
 
   // Check if user is authenticated
@@ -356,10 +354,18 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     return () => unsubscribe();
   }, [router]);
 
+  // On project load, initialize the date filter state from project.filterFromDate and project.filterToDate
   useEffect(() => {
     if (project) {
       setClientNameInput(project.clientName || '');
+      setClientEmailInput(project.clientEmail || '');
       setEmailSignature(project.emailSignature || 'Best regards,\nYour Name');
+      setAdvancePaid(project.advancePaid ?? 0);
+      setTotalAmount(project.totalAmount ?? 0);
+      setPaymentStatus(project.paymentStatus ?? 'pending');
+      setPaymentDueDate(project.paymentDueDate ?? null);
+      setEmailFilterFromDate(project.filterFromDate || undefined);
+      setEmailFilterToDate(project.filterToDate || undefined);
     }
   }, [project]);
 
@@ -424,8 +430,8 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     if (!id) return;
     
     setFilterLoading(true);
-    console.log('Filter submit - filterClientEmail:', filterClientEmail);
-    console.log('Filter email trimmed and lowercase:', filterClientEmail.trim().toLowerCase());
+    console.log('Filter submit - filterClientEmail:', clientEmailInput);
+    console.log('Filter email trimmed and lowercase:', clientEmailInput.trim().toLowerCase());
     console.log('Current inbox length:', inbox.length);
     
     // Save client email to project in Firestore
@@ -435,12 +441,12 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       await fetch(`/api/projects/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ clientEmail: filterClientEmail.trim() }),
+        body: JSON.stringify({ clientEmail: clientEmailInput.trim() }),
       });
       mutate();
     }
     // Fetch filtered inbox from backend
-    const res = await fetchProjectInbox(id, emailFilterFromDate, emailFilterToDate, filterClientEmail);
+    const res = await fetchProjectInbox(id, emailFilterFromDate, emailFilterToDate, clientEmailInput);
     console.log('Emails fetched:', res.emails?.length || 0);
     
     setInbox(res.emails as Email[]);
@@ -454,24 +460,6 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       setTimeout(() => setToast(null), 4000);
     }
     setFilterLoading(false);
-  };
-
-  const handleAdvance = async () => {
-    setAdvancing(true);
-    const res = await fetch(`/api/projects/${id}/phase/next`, { method: 'POST' });
-    const data = await res.json();
-    // Auto-refresh project and inbox after phase change
-    const inboxRes = await fetchProjectInbox(id);
-    mutate(); // Re-fetch project and update SWR cache
-    setInbox(inboxRes.emails as Email[]);
-    setAdvancing(false);
-    if (data.success) {
-      setToast(`AI: ${data.aiReply || 'Phase advanced!'} (Phase advanced)`);
-      incrementMinutesSaved();
-    } else {
-      setToast(`AI: ${data.reason || 'Phase not advanced.'}`);
-    }
-    setTimeout(() => setToast(null), 5000);
   };
 
   // New: send user message in chat
@@ -613,7 +601,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         const data = await res.json();
         setPhasesError(data.error || 'Failed to save phases.');
       }
-    } catch (err) {
+    } catch {
       setPhasesError('An error occurred.');
     } finally {
       setEditLoading(false);
@@ -704,6 +692,20 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     }
   };
 
+  const handleClientEmailBlur = async () => {
+    if (!project || clientEmailInput === project.clientEmail) return;
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ clientEmail: clientEmailInput }),
+      });
+      mutate();
+    }
+  };
+
   const handleEmailSignatureBlur = async () => {
     if (!project || emailSignature === project.emailSignature) return;
     const user = auth.currentUser;
@@ -713,6 +715,76 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ emailSignature }),
+      });
+      mutate();
+    }
+  };
+
+  // Add state for loading phase change
+  const [phaseChangeLoading, setPhaseChangeLoading] = useState(false);
+
+  // Handler to move to previous phase
+  const handleMoveBackPhase = async () => {
+    if (!project || !phases) return;
+    const idx = phases.indexOf(project.currentPhase);
+    if (idx <= 0) return;
+    setPhaseChangeLoading(true);
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      await fetch(`/api/projects/${project.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPhase: phases[idx - 1] }),
+      });
+      mutate();
+    }
+    setPhaseChangeLoading(false);
+  };
+
+  // Handler to move to next phase
+  const handleMoveNextPhase = async () => {
+    if (!project || !phases) return;
+    const idx = phases.indexOf(project.currentPhase);
+    if (idx === -1 || idx >= phases.length - 1) return;
+    setPhaseChangeLoading(true);
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      await fetch(`/api/projects/${project.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPhase: phases[idx + 1] }),
+      });
+      mutate();
+    }
+    setPhaseChangeLoading(false);
+  };
+
+  // Handler to persist 'From' date
+  const handleFromDateChange = async (val: string | undefined) => {
+    setEmailFilterFromDate(val);
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ filterFromDate: val || null }),
+      });
+      mutate();
+    }
+  };
+  // Handler to persist 'To' date
+  const handleToDateChange = async (val: string | undefined) => {
+    setEmailFilterToDate(val);
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ filterToDate: val || null }),
       });
       mutate();
     }
@@ -740,9 +812,12 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     );
   }
   
+  // In the main component, get the signature image from the project
+  const signatureImage = project?.signatureImage || null;
+  
+  // Restore DEFAULT_PHASES and phases
+  const DEFAULT_PHASES = ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY'];
   const phases = project.phases || DEFAULT_PHASES;
-  const phaseIcons = [<BoltIcon className="h-8 w-8" />, <ChatBubbleLeftRightIcon className="h-8 w-8" />, <ClockIcon className="h-8 w-8" />, <CheckCircleIcon className="h-8 w-8" />];
-  const signatureImage = null; // Replace with actual signature image if available
   
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -754,12 +829,31 @@ export default function ProjectDetailPage({ params }: { params: any }) {
             </button>
             <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300">{project.name}</h1>
           </div>
-          <button onClick={handleAdvance} disabled={advancing} className="bg-[#6446d6] hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold shadow-md flex items-center gap-2 disabled:opacity-50 transition">
-            {advancing ? <><Spinner /> Advancing...</> : 'Advance Phase'}
-          </button>
+          {/* In the header bar, replace the purple 'Advance Phase' button with the Back/Advance buttons, aligned to the right */}
+          <div className="flex-1 flex justify-end items-center gap-4">
+            <div className="flex flex-row gap-3">
+              <button
+                className="flex items-center gap-2 px-6 py-3 bg-violet-300 hover:bg-violet-400 active:bg-violet-500 text-violet-900 rounded-xl font-semibold shadow-md transition-all duration-200 text-base disabled:opacity-50 disabled:cursor-not-allowed border border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                onClick={handleMoveBackPhase}
+                disabled={phaseChangeLoading || phases.indexOf(project.currentPhase) <= 0}
+                style={{ minWidth: 120 }}
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                Back
+              </button>
+              <button
+                className="flex items-center gap-2 px-6 py-3 bg-violet-300 hover:bg-violet-400 active:bg-violet-500 text-violet-900 rounded-xl font-semibold shadow-md transition-all duration-200 text-base disabled:opacity-50 disabled:cursor-not-allowed border border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-200"
+                onClick={handleMoveNextPhase}
+                disabled={phaseChangeLoading || phases.indexOf(project.currentPhase) === -1 || phases.indexOf(project.currentPhase) >= phases.length - 1}
+                style={{ minWidth: 120 }}
+              >
+                Advance
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
-      {/* Timeline Stepper */}
       <AnimatePresence>
         <motion.div
           key={project.currentPhase}
@@ -770,27 +864,36 @@ export default function ProjectDetailPage({ params }: { params: any }) {
           className="max-w-3xl mx-auto mt-8 mb-10"
         >
           <div className="flex items-center justify-between gap-2">
-            {phases.map((phase: string, idx: number) => {
-              const isActive = project.currentPhase === phase;
-              const isCompleted = phases.indexOf(project.currentPhase) > idx;
-              return (
-                <div key={`${phase}-${idx}`} className="flex-1 flex flex-col items-center relative">
-                  <motion.div
-                    layout
-                    animate={isActive ? { scale: 1.18, boxShadow: '0 0 12px 2px #6446d6, 0 0 32px 2px #6446d6' } : { scale: 1, boxShadow: 'none' }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                    className={`rounded-full h-16 w-16 flex items-center justify-center mb-2 border-4 transition-all duration-700 ${isActive ? 'bg-[#6446d6] text-white border-[#6446d6] shadow-md ring-2 ring-blue-400/30' : isCompleted ? 'bg-green-900 text-green-300 border-green-400' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
-                    style={{ zIndex: isActive ? 10 : 1 }}
-                  >
-                    {phaseIcons[idx]}
-                  </motion.div>
-                  <span className={`text-base font-bold tracking-wide uppercase ${isActive ? 'text-blue-200 drop-shadow-lg' : isCompleted ? 'text-green-300' : 'text-gray-500'}`}>{phase}</span>
-                  {idx < phases.length - 1 && (
-                    <div className="absolute top-8 right-0 w-full h-1 bg-gradient-to-r from-blue-400/30 to-gray-700 z-0" style={{ left: '50%', width: '100%' }} />
-                  )}
-                </div>
-              );
-            })}
+            {/* Stepper */}
+            <div className="flex-1 flex items-center">
+              {phases.map((phase: string, idx: number) => {
+                const isActive = project.currentPhase === phase;
+                const isCompleted = phases.indexOf(project.currentPhase) > idx;
+                const phaseIcons = [
+                  <BoltIcon className="h-8 w-8" key="bolt" />, 
+                  <ChatBubbleLeftRightIcon className="h-8 w-8" key="chat" />, 
+                  <ClockIcon className="h-8 w-8" key="clock" />, 
+                  <CheckCircleIcon className="h-8 w-8" key="check" />
+                ];
+                return (
+                  <div key={`${phase}-${idx}`} className="flex-1 flex flex-col items-center relative">
+                    <motion.div
+                      layout
+                      animate={isActive ? { scale: 1.18, boxShadow: '0 0 12px 2px #6446d6, 0 0 32px 2px #6446d6' } : { scale: 1, boxShadow: 'none' }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                      className={`rounded-full h-16 w-16 flex items-center justify-center mb-2 border-4 transition-all duration-700 ${isActive ? 'bg-[#6446d6] text-white border-[#6446d6] shadow-md ring-2 ring-blue-400/30' : isCompleted ? 'bg-green-900 text-green-300 border-green-400' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
+                      style={{ zIndex: isActive ? 10 : 1 }}
+                    >
+                      {phaseIcons[idx]}
+                    </motion.div>
+                    <span className={`text-base font-bold tracking-wide uppercase ${isActive ? 'text-blue-200 drop-shadow-lg' : isCompleted ? 'text-green-300' : 'text-gray-500'}`}>{phase}</span>
+                    {idx < phases.length - 1 && (
+                      <div className="absolute top-8 right-0 w-full h-1 bg-gradient-to-r from-blue-400/30 to-gray-700 z-0" style={{ left: '50%', width: '100%' }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -805,44 +908,30 @@ export default function ProjectDetailPage({ params }: { params: any }) {
           <h2 className="text-lg font-bold text-blue-200 mb-3">Client Feed Filters</h2>
           <p className="text-xs text-blue-300 mb-6">Set filters to control which emails are shown below. You can filter by client name, client email, and date.</p>
           <form onSubmit={(e) => { console.log('Form submitted!'); handleFilterSubmit(e); }} className="grid grid-cols-1 gap-6 items-end w-full mb-6 md:mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="flex flex-col w-full gap-y-4">
                 <label className="text-xs text-blue-200 font-semibold mb-2">Client Name</label>
                 <input
-                  className="border px-4 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800 !text-white"
+                  className="border px-4 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
                   placeholder="e.g. John Doe"
                   value={clientNameInput}
                   onChange={e => setClientNameInput(e.target.value)}
                   onBlur={handleClientNameBlur}
-                  type="text"
                   ref={clientNameInputRef}
                 />
-                <span className="text-xs text-blue-400 min-h-[24px]">Enter the client&apos;s name.</span>
+                <span className="text-xs text-blue-400 min-h-[24px]">Enter the client&apos;s name. (Saved globally)</span>
               </div>
-            <div className="flex flex-col w-full gap-y-4">
-              <label className="text-xs text-blue-200 font-semibold mb-2">Client Email Address</label>
-              <input
-                className="border px-4 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800 !text-white"
-                placeholder="e.g. client@email.com"
-                  value={filterClientEmail}
-                  onChange={e => setFilterClientEmail(e.target.value)}
-                  type="text"
+              <div className="flex flex-col w-full gap-y-4">
+                <label className="text-xs text-blue-200 font-semibold mb-2">Client Email Address</label>
+                <input
+                  className="border px-4 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
+                  placeholder="e.g. client@email.com"
+                  value={clientEmailInput}
+                  onChange={e => setClientEmailInput(e.target.value)}
+                  onBlur={handleClientEmailBlur}
                 />
-                {/* {showSuggestions && senderSuggestions.length > 0 && (
-                  <ul className="absolute z-50 bg-gray-800 border border-gray-700 rounded-lg mt-1 w-full max-h-48 overflow-y-auto text-white shadow-lg">
-                    {senderSuggestions.filter(s => s.toLowerCase().includes(filterClientEmail.toLowerCase())).map(s => (
-                      <li
-                        key={s}
-                        className="px-4 py-2 hover:bg-blue-700 cursor-pointer"
-                        onMouseDown={() => { setFilterClientEmail(s); setShowSuggestions(false); }}
-                      >
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                )} */}
-              <span className="text-xs text-blue-400 min-h-[24px]">Only emails from this address will be shown.</span>
-            </div>
+                <span className="text-xs text-blue-400 min-h-[24px]">This is the saved client email. (Saved globally)</span>
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col w-full gap-y-4">
@@ -851,7 +940,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                 type="date"
                 className="border px-3 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
                 value={emailFilterFromDate || ''}
-                onChange={e => setEmailFilterFromDate(e.target.value || undefined)}
+                onChange={e => handleFromDateChange(e.target.value || undefined)}
                 placeholder="Start date (optional)"
               />
               <span className="text-xs text-blue-400 min-h-[24px]">Show emails from this date onwards.</span>
@@ -862,7 +951,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                 type="date"
                 className="border px-3 h-12 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-white placeholder-gray-400 border-gray-700 bg-gray-800"
                 value={emailFilterToDate || ''}
-                onChange={e => setEmailFilterToDate(e.target.value || undefined)}
+                onChange={e => handleToDateChange(e.target.value || undefined)}
                 placeholder="End date (optional)"
               />
               <span className="text-xs text-blue-400 min-h-[24px]">Show emails up to this date. Leave blank to show all.</span>
@@ -907,6 +996,9 @@ export default function ProjectDetailPage({ params }: { params: any }) {
                     <div className="font-semibold text-blue-700 mb-1">AI Draft (Pending Approval)</div>
                     <div className="whitespace-pre-line">{msg.aiReplies[0].body}</div>
                     <div className="mt-2 text-xs text-gray-500">{msg.aiReplies[0].signature}</div>
+                    {signatureImage && (
+                      <img src={signatureImage} alt="Signature" style={{ maxHeight: 64, marginTop: 8, borderRadius: 4 }} />
+                    )}
                       </div>
                 ) : (
                   safeDisplay(msg.body ? msg.body.slice(0, 120) + (msg.body.length > 120 ? '...' : '') : msg.snippet)
@@ -1082,10 +1174,6 @@ export default function ProjectDetailPage({ params }: { params: any }) {
             <button onClick={() => setUnsureAlert(false)} className="ml-4 px-3 py-1 bg-yellow-700 rounded">Dismiss</button>
           </div>
         )}
-      </div>
-      {/* Payment Status Section */}
-      <div className="max-w-3xl mx-auto mb-16">
-        {/* ... existing payment section content ... */}
       </div>
     </div>
   );

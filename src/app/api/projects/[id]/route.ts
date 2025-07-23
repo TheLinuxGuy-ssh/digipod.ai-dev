@@ -96,7 +96,7 @@ export async function PATCH(
   const { id } = params;
   const updateData: Record<string, unknown> = {};
   try {
-    const { clientEmail, phases, name, advancePaid, totalAmount, paymentDueDate, clientName, emailSignature } = await req.json();
+    const { clientEmail, phases, name, advancePaid, totalAmount, paymentDueDate, clientName, emailSignature, currentPhase, filterFromDate, filterToDate } = await req.json();
     if (clientEmail !== undefined) {
       updateData.clientEmail = clientEmail;
     }
@@ -136,6 +136,27 @@ export async function PATCH(
         return NextResponse.json({ error: 'paymentDueDate must be a string (ISO date) or null.' }, { status: 400 });
       }
       updateData.paymentDueDate = paymentDueDate;
+    }
+    // Allow updating currentPhase
+    if (currentPhase !== undefined) {
+      if (typeof currentPhase !== 'string' || !currentPhase.trim()) {
+        return NextResponse.json({ error: 'currentPhase must be a non-empty string.' }, { status: 400 });
+      }
+      updateData.currentPhase = currentPhase;
+      updateData.updatedAt = new Date();
+    }
+    // Allow updating filterFromDate and filterToDate
+    if (filterFromDate !== undefined) {
+      if (filterFromDate !== null && typeof filterFromDate !== 'string') {
+        return NextResponse.json({ error: 'filterFromDate must be a string (ISO date) or null.' }, { status: 400 });
+      }
+      updateData.filterFromDate = filterFromDate;
+    }
+    if (filterToDate !== undefined) {
+      if (filterToDate !== null && typeof filterToDate !== 'string') {
+        return NextResponse.json({ error: 'filterToDate must be a string (ISO date) or null.' }, { status: 400 });
+      }
+      updateData.filterToDate = filterToDate;
     }
     // Always calculate amountLeft and paymentStatus
     const projectRef = db.collection('projects').doc(id);
