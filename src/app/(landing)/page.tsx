@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { useCallback, useState } from "react";
+import "./testimonial.css";
 
 declare global {
   interface Window {
@@ -226,7 +227,80 @@ export default function LandingPage() {
           </button>
         </div>
       </section>
-
+      <div className="outerdiv">
+    <div className="innerdiv">
+      <div className="div1 eachdiv bg-gradient-to-br from-[#18122b] to-[#232042] border border-[#3a1c8d] rounded-3xl shadow-2xl">
+          <div className="userdetails">
+          <div className="imgbox">
+            <img src="./profile.svg" alt="" />
+          </div>
+          <div className="detbox">
+            <p className="name">Tumusiime Elijah</p>
+            <p className="designation">Founder of Stealth Startup</p>
+          </div>
+          </div>
+        <div className="text-2xl md:text-2xl font-extrabold mb-4 text-white">
+          <h4>The life of a creative is definitely simplified.</h4>
+       </div>
+      </div>
+      <div className="div2 eachdiv bg-gradient-to-br from-[#18122b] to-[#232042] border border-[#3a1c8d] rounded-3xl shadow-2xl">
+                <div className="userdetails">
+          <div className="imgbox">
+            <img src="./prof-1.jpg" alt="" />
+          </div>
+          <div className="detbox">
+            <p className="name">Dewashish Mehta</p>
+            <p className="designation">Full Stack JS Developer</p>
+          </div>
+          </div>
+        <div className="text-2xl md:text-2xl font-extrabold mb-4 text-white">
+          <h4>Absolutely Amazing!</h4>
+        </div>
+      </div>
+      <div className="div3 eachdiv bg-gradient-to-br from-[#18122b] to-[#232042] border border-[#3a1c8d] rounded-3xl shadow-2xl">
+                <div className="userdetails">
+          <div className="imgbox">
+            <img src="./tlg.png" alt="" />
+          </div>
+          <div className="detbox">
+            <p className="name">TheLinuxGuy</p>
+            <p className="designation">Server Administrator</p>
+          </div>
+          </div>
+        <div className="text-2xl md:text-2xl font-extrabold mb-4 text-white">
+          <h4>Would love to try it out!! 🤩 Very excited!!!!</h4>
+          </div>
+      </div>
+      <div className="div4 eachdiv bg-gradient-to-br from-[#18122b] to-[#232042] border border-[#3a1c8d] rounded-3xl shadow-2xl">
+                <div className="userdetails">
+          <div className="imgbox">
+            <img src="./profile.svg" alt="" />
+          </div>
+          <div className="detbox">
+            <p className="name">Adam West</p>
+            <p className="designation">Developer@Stealth </p>
+          </div>
+          </div>
+        <div className="text-2xl md:text-2xl font-extrabold mb-4 text-white">
+          <h4>Looks Promising! </h4>
+        </div>
+      </div>
+      <div className="div5 eachdiv bg-gradient-to-br from-[#18122b] to-[#232042] border border-[#3a1c8d] rounded-3xl shadow-2xl">
+                <div className="userdetails">
+          <div className="imgbox">
+            <img src="./profile.svg" alt="" />
+          </div>
+          <div className="detbox">
+            <p className="name">Urjah Goel</p>
+            <p className="designation">Creative Freelancer</p>
+          </div>
+          </div>
+        <div className="text-2xl md:text-2xl font-extrabold mb-4 text-white">
+          <h4>Take my money!!</h4>
+        </div>
+      </div>
+    </div>
+  </div>
       {/* Footer */}
       <footer className="w-full flex flex-col items-center justify-center py-14 border-t border-[#3a1c8d] mt-auto relative overflow-hidden">
         {/* Optionally, remove or darken footer overlay for a pure midnight look */}

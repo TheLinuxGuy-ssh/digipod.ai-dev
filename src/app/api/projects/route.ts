@@ -14,7 +14,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const projectsSnap = await db.collection('projects').where('userId', '==', userId).get();
-    const projects = projectsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const projects = projectsSnap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }) as { id: string; createdAt: Date | { toDate?: () => Date } | string | undefined })
+      .sort((a, b) => {
+        let aDate: Date;
+        if (!a.createdAt) aDate = new Date(0);
+        else if (a.createdAt instanceof Date) aDate = a.createdAt;
+        else if (typeof a.createdAt === 'object' && typeof a.createdAt.toDate === 'function') aDate = a.createdAt.toDate();
+        else if (typeof a.createdAt === 'string') aDate = new Date(a.createdAt);
+        else aDate = new Date(0);
+
+        let bDate: Date;
+        if (!b.createdAt) bDate = new Date(0);
+        else if (b.createdAt instanceof Date) bDate = b.createdAt;
+        else if (typeof b.createdAt === 'object' && typeof b.createdAt.toDate === 'function') bDate = b.createdAt.toDate();
+        else if (typeof b.createdAt === 'string') bDate = new Date(b.createdAt);
+        else bDate = new Date(0);
+        return bDate.getTime() - aDate.getTime();
+      });
     return NextResponse.json(projects);
   } catch (err) {
     console.error('Error in GET /api/projects:', err);
@@ -53,6 +70,10 @@ export async function POST(req: NextRequest) {
         currentPhase: 'DISCOVERY',
         createdAt: new Date(),
         updatedAt: new Date(),
+        paymentStatus: 'pending',
+        advancePaid: 0,
+        totalAmount: 0,
+        paymentDueDate: null,
       });
     } catch (firestoreErr) {
       console.error('POST /api/projects: Firestore error', firestoreErr);

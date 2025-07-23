@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { PlusIcon, FolderIcon, EllipsisVerticalIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import PipAvatar from '@/components/PipAvatar';
+import { FolderIcon, EllipsisVerticalIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import AntiHustleMeter from '@/components/AntiHustleMeter';
 import useSWR from 'swr';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -113,14 +112,14 @@ const fetcher = async (url: string) => {
   return data;
 };
 
-async function createProject(name: string, clientEmail: string) {
+async function createProject(name: string, clientEmail: string, clientName?: string) {
   const user = auth.currentUser;
   if (!user) return null;
   const token = await user.getIdToken();
   const res = await fetch('/api/projects', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ name, clientEmail }),
+    body: JSON.stringify({ name, clientEmail, clientName }),
   });
   if (!res.ok) {
     // Optionally, show a toast or log the error
@@ -228,7 +227,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
         `${gradientClass} rounded-2xl shadow-xl p-8 flex flex-col backdrop-blur-md  card-bg  items-start min-h-[180px] border-1 h-full relative  transition-all duration-300 outline-none focus:ring-4 focus:ring-blue-400/50 hover:scale-[1.02] hover:shadow-2xl border-2 border-digi hover:border-blue-400 ${expanded ? 'ring-2 ring-blue-300/30 border-blue-400' : ''} ${loading ? 'animate-pulse' : ''}`
       }
       style={{ minHeight: 180, height: '100%', cursor: 'pointer' }}
-      onClick={!isGmailConnected ? () => {} : onClick}
+      onClick={onClick}
       onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onClick()}
     >
       {/* Loading overlay */}
@@ -270,7 +269,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
         </div>
       ) : (
         <>
-          <div className={`transition-all duration-300 ${expanded ? 'opacity-0 h-0 pointer-events-none' : 'opacity-100 h-auto'}`}>{summary}</div>
+          <div className={`transition-all w-full duration-300 ${expanded ? 'opacity-0 h-0 pointer-events-none' : 'opacity-100 h-auto'}`}>{summary}</div>
           <div
             className={`transition-all duration-500 ease-in-out ${expanded ? 'opacity-100 max-h-[320px] mt-2' : 'opacity-0 max-h-0 pointer-events-none'} w-full`}
             style={{ overflowY: expanded ? 'auto' : 'hidden' }}
@@ -279,7 +278,6 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
           </div>
         </>
       )}
-      <span className="absolute top-4 right-4 text-xs text-blue-100 bg-blue-900/80 px-2 py-1 rounded-lg shadow-md select-none">{expanded ? 'Click to collapse' : 'Click to expand'}</span>
     </div>
   );
 }
@@ -287,12 +285,8 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
 
 
 export default function DashboardClient() {
-  const [name, setName] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
-  const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [minutesSaved, setMinutesSaved] = useState(0);
-  const [focusMode, setFocusMode] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [authReady, setAuthReady] = useState(false);
   const [, forceRerender] = useState(0);
@@ -310,7 +304,7 @@ export default function DashboardClient() {
   );
 
   // AI drafts state
-  const [aiDraftsData, setAiDraftsData] = useState<{ drafts: any[] }>({ drafts: [] });
+  const [aiDraftsData, setAiDraftsData] = useState<{ drafts: DashboardEmail[] }>({ drafts: [] });
   const [loadingDrafts, setLoadingDrafts] = useState(false);
 
   // New state for AI-powered dashboard sections
@@ -347,8 +341,13 @@ export default function DashboardClient() {
     lastUpdated?: string;
   } | null>(null);
 
-  // 1. Add state at the top of DashboardClient:
-  const [showAISummary, setShowAISummary] = useState(false);
+  // Modal state for creating a new project
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   // Helper to toggle card expansion
   const handleCardToggle = (card: string) => {
@@ -423,7 +422,6 @@ export default function DashboardClient() {
     const handleStorage = () => {
       const saved = parseInt(localStorage.getItem('digipod-minutes-saved') || '0', 10);
       setMinutesSaved(saved);
-      setFocusMode(localStorage.getItem('digipod-focus-mode') === 'on');
     };
     // Set initial value on mount
     handleStorage();
@@ -598,22 +596,6 @@ export default function DashboardClient() {
   useEffect(() => {
     checkGmailConnection();
   }, [authReady]);
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const project = await createProject(name, clientEmail);
-    if (project && project.id) {
-      mutate();
-      setName('');
-      setClientEmail('');
-      setToast(`Project "${project.name}" created!`);
-    } else {
-      setToast('Failed to create project. Please try again.');
-    }
-    setLoading(false);
-    setTimeout(() => setToast(null), 2500);
-  };
 
   const handleDelete = async (projectId: string) => {
     // Add confirmation step
@@ -829,9 +811,9 @@ export default function DashboardClient() {
             </div>
             <div className="flex-1 flex justify-center items-center">
               {/* Floating Pip Avatar */}
-              <div className="animate-float drop-shadow-xl">
+              {/* <div className="animate-float drop-shadow-xl">
                 <PipAvatar minutesSaved={minutesSaved} focusMode={focusMode} />
-              </div>
+              </div> */}
             </div>
             <div className="flex-1 flex justify-end items-center gap-4">
               <AntiHustleMeter minutesSaved={minutesSaved} />
@@ -859,6 +841,16 @@ export default function DashboardClient() {
           </div>
         </div>
       </section>
+
+      {/* Create a New Project Button - inside dashboard, above cards */}
+      <div className="w-full flex justify-end px-20 mb-4">
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="px-5 py-2 bg-white text-black font-bold rounded-xl hover:scale-105 transition flex items-center gap-2"
+        >
+          <span className="text-lg">+</span> Create a New Project
+        </button>
+      </div>
       {/* Toast notification */}
       {toast && (
         <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
@@ -866,82 +858,83 @@ export default function DashboardClient() {
         </div>
       )}
       {/* AI-powered Overview Cards */}
-      {/* What's Changed Card - Top with Calendar Icon */}
-      <div className="w-full max-w-3xl mx-auto px-6 mb-8 relative ">
-        <ExpandableCard
-          expanded={expandedCard === 'summary'}
-          onClick={() => handleCardToggle('summary')}
-          title="What's Changed"
-          icon={<SparklesIcon className="h-8 w-8 text-yellow-300" />}
-          summary={
-            loadingSummary ? (
-              <div className="space-y-2 w-full">
-                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '90%' }}></div>
-                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '75%' }}></div>
-                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '60%' }}></div>
-              </div>
-            ) : (
-              <p className="text-blue-100 text-base truncate w-full">{aiSummary || 'No AI changes detected.'}</p>
-            )
-          }
-          content={
-            loadingSummary ? (
-              <div className="space-y-3 w-full">
-                <div className="h-4 bg-blue-900/40 rounded animate-pulse"></div>
-                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '95%' }}></div>
-                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '80%' }}></div>
-                <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '70%' }}></div>
-              </div>
-            ) : (
-              <div className="text-blue-100 text-base mt-2 " >
-                <p className="mb-4">{aiSummary || 'No AI changes detected.'}</p>
-                {summaryData && typeof summaryData === 'object' && 'summary' in summaryData && (
-                  <div className="bg-blue-900/20 rounded-lg p-4 space-y-2">
-                    <h4 className="font-semibold text-blue-200 mb-3">AI Activity Breakdown (Last 24h):</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex justify-between">
-                        <span>🚀 Phase Advances:</span>
-                        <span className="font-semibold text-green-400">{summaryData.summary?.phaseAdvances || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>📝 New AI Drafts:</span>
-                        <span className="font-semibold text-blue-400">{summaryData.summary?.newDrafts || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>✅ New Todos:</span>
-                        <span className="font-semibold text-yellow-400">{summaryData.summary?.newTodos || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>📧 Processed Emails:</span>
-                        <span className="font-semibold text-purple-400">{summaryData.summary?.processedEmails || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>🤖 AI Activities:</span>
-                        <span className="font-semibold text-cyan-400">{summaryData.summary?.aiActivities || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>⚡ High Impact:</span>
-                        <span className="font-semibold text-red-400">{summaryData.summary?.highImpactChanges || 0}</span>
-                      </div>
-                    </div>
-                    <div className="text-xs text-green-500 mt-3 pt-2 border-t border-green-200">
-                      Last updated: {summaryData?.lastUpdated ? new Date(summaryData.lastUpdated).toLocaleString() : 'Unknown'}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          }
-          loading={loadingSummary}
-          gradientClass="bg-gradient-to-b from-cyan-800 to-fuchsia-800"
-          isGmailConnected={isGmailConnected}
-        />
-      </div>
+      
       {/* Second row: To-Dos, Create Project, Drafted Replies */}
-      <div className="px-4 md:px-12">
-        <div className="flex flex-col items-center justify-center gap-8 md:flex-row md:flex-nowrap md:items-start md:justify-center md:gap-8 mb-12">
-          {/* To-Dos Card */}
-          <div className="flex-1 max-w-sm flex flex-col justify-between  rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-bl from-cyan-800 to-fuchsia-800">
+      <div id="create-project-section" className="px-4 md:px-12">
+        <div className="flex flex-col md:flex-row items-stretch justify-center gap-8 mb-12">
+          {/* What's Changed Card - moved from top, with full breakdown */}
+          <div className="flex-1 max-w-xl flex flex-col justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-b from-cyan-800 to-fuchsia-800 min-h-[220px] h-[260px]">
+            <ExpandableCard
+              expanded={expandedCard === 'summary'}
+              onClick={() => handleCardToggle('summary')}
+              title="What's Changed"
+              icon={<SparklesIcon className="h-8 w-8 text-yellow-300" />}
+              summary={
+                loadingSummary ? (
+                  <div className="space-y-2 w-full">
+                    <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '90%' }}></div>
+                    <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '75%' }}></div>
+                    <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '60%' }}></div>
+                  </div>
+                ) : (
+                  <p className="text-blue-100 text-base truncate w-full">{aiSummary || 'No AI changes detected.'}</p>
+                )
+              }
+              content={
+                loadingSummary ? (
+                  <div className="space-y-3 w-full">
+                    <div className="h-4 bg-blue-900/40 rounded animate-pulse"></div>
+                    <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '95%' }}></div>
+                    <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '80%' }}></div>
+                    <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '70%' }}></div>
+                  </div>
+                ) : (
+                  <div className="text-blue-100 text-base mt-2 " >
+                    <p className="mb-4 w-full">{aiSummary || 'No AI changes detected.'}</p>
+                    {summaryData && typeof summaryData === 'object' && 'summary' in summaryData && (
+                      <div className="bg-blue-900/20 rounded-lg p-4 space-y-2">
+                        <h4 className="font-semibold text-blue-200 mb-3">AI Activity Breakdown (Last 24h):</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="flex justify-between">
+                            <span>🚀 Phase Advances:</span>
+                            <span className="font-semibold text-green-400">{summaryData.summary?.phaseAdvances || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>📝 New AI Drafts:</span>
+                            <span className="font-semibold text-blue-400">{summaryData.summary?.newDrafts || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>✅ New Todos:</span>
+                            <span className="font-semibold text-yellow-400">{summaryData.summary?.newTodos || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>📧 Processed Emails:</span>
+                            <span className="font-semibold text-purple-400">{summaryData.summary?.processedEmails || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>🤖 AI Activities:</span>
+                            <span className="font-semibold text-cyan-400">{summaryData.summary?.aiActivities || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>⚡ High Impact:</span>
+                            <span className="font-semibold text-red-400">{summaryData.summary?.highImpactChanges || 0}</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-green-500 mt-3 pt-2 border-t border-green-200">
+                          Last updated: {summaryData?.lastUpdated ? new Date(summaryData.lastUpdated).toLocaleString() : 'Unknown'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+              loading={loadingSummary}
+              gradientClass="bg-gradient-to-b from-cyan-800 to-fuchsia-800"
+              isGmailConnected={isGmailConnected}
+            />
+          </div>
+          {/* Upcoming To-Dos Card */}
+          <div className="flex-1 max-w-xl w-full min-w-[320px] flex flex-col justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-b from-cyan-800 to-fuchsia-800 min-h-[260px] h-[260px]">
             <ExpandableCard
               expanded={expandedCard === 'todos'}
               onClick={() => handleCardToggle('todos')}
@@ -1076,42 +1069,15 @@ export default function DashboardClient() {
               isGmailConnected={isGmailConnected}
             />
           </div>
-          {/* Create New Project Widget */}
-          <div className="flex-[2] min-w-[400px] max-w-3xl min-h-[260px] flex flex-col justify-between">
-            <div className="bg-gray-800/80 rounded-2xl shadow-2xl p-10 border-1 border-digi backdrop-blur-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-900/40 group cursor-pointer flex flex-col justify-between h-full">
-              <h2 className="text-2xl font-bold mb-2 flex items-center  gap-2 text-blue-200 group-hover:text-purple-200 transition-colors">
-                <span className="animate-pulse"><PlusIcon className="h-6 w-6" /></span> Create a New Project
-              </h2>
-              
-              <p className="text-gray-400 mb-6">Start a new project for a client. You can set the client email later.</p>
-              <form onSubmit={handleCreate}  className="flex flex-col sm:flex-row gap-3 items-center">
-                <input
-                  className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:outline-none bg-gray-900/70 border-gray-700 text-white placeholder-gray-400"
-                  placeholder="New project name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  required
-                />
-                <button
-                  type="submit"
-                  className="transition bg-gradient-to-r from-blue-600 to-fuchsia-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-semibold shadow-lg disabled:opacity-50 min-w-[120px] justify-center bg-[#383f5eda] digi-btn border-1 border-digi hover:from-purple-500 hover:to-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none active:scale-95"
-                  disabled={loading}
-                >
-                  <PlusIcon className="h-5 w-5" style={{ color: '#fff', transition: 'color 0.2s' }} />
-                  {loading ? 'Creating...' : 'Create'}
-                </button>
-              </form>
-            </div>
-          </div>
-          {/* Drafted Replies Card */}
-          <div className="flex-1 max-w-sm flex flex-col  justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-br from-cyan-800 to-fuchsia-800">
+          {/* AI Drafts Card */}
+          <div className="flex-1 max-w-xl w-full min-w-[320px] flex flex-col justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-b from-cyan-800 to-fuchsia-800 min-h-[260px] h-[260px]">
             <ExpandableCard
               expanded={expandedCard === 'drafts'}
               onClick={() => handleCardToggle('drafts')}
               title={
                 <>
                   AI Drafts
-                  <div className="text-blue-200 text-xs font-normal mt-1">I saw some emails in your inbox from your client. I'm ready with the replies.</div>
+                  <div className="text-blue-200 text-xs font-normal mt-1">I saw some emails in your inbox from your client. I&apos;m ready with the replies.</div>
                 </>
               }
               icon={<EnvelopeOpenIcon className="h-8 w-8 mr-2 text-blue-200 drop-shadow-lg" />}
@@ -1268,6 +1234,8 @@ export default function DashboardClient() {
             />
           </div>
         </div>
+        {/* Create New Project Widget */}
+        
       </div>
       {/* Calendar Popup Modal */}
       {expandedCard === 'calendar' && (
@@ -1668,6 +1636,66 @@ export default function DashboardClient() {
                   return <div className="text-xs text-yellow-400">No parent email linked to this draft.</div>;
                 }
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Create Project Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-gray-900 rounded-xl p-8 w-full max-w-md border border-blue-900 shadow-xl relative">
+            <button onClick={() => setShowCreateModal(false)} className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-800">
+              <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor' className='h-6 w-6 text-gray-400'><path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' /></svg>
+            </button>
+            <h2 className="text-xl font-bold mb-4 text-blue-200">Create a New Project</h2>
+            <div className="flex flex-col gap-4">
+              <input
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-400"
+                placeholder="Project Name"
+                value={newProjectName}
+                onChange={e => setNewProjectName(e.target.value)}
+              />
+              <input
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-400"
+                placeholder="Client Name"
+                value={newClientName}
+                onChange={e => setNewClientName(e.target.value)}
+              />
+              <input
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-400"
+                placeholder="Client Email"
+                value={newClientEmail}
+                onChange={e => setNewClientEmail(e.target.value)}
+                type="email"
+              />
+              {createError && <div className="text-red-400 text-sm">{createError}</div>}
+              <button
+                className="mt-4 px-5 py-3 text-center luminance luminance-bg text-white font-bold rounded-xl shadow-lg hover:scale-105 transition flex items-center gap-2 disabled:opacity-60"
+                disabled={createLoading || !newProjectName || !newClientName || !newClientEmail}
+                onClick={async () => {
+                  setCreateLoading(true);
+                  setCreateError('');
+                  try {
+                    const project = await createProject(newProjectName, newClientEmail, newClientName);
+                    if (project && project.id) {
+                      mutate(); // Refresh project list
+                      setShowCreateModal(false);
+                      setNewProjectName('');
+                      setNewClientName('');
+                      setNewClientEmail('');
+                    } else {
+                      setCreateError('Failed to create project.');
+                    }
+                  } catch {
+                    setCreateError('Failed to create project.');
+                  } finally {
+                    setCreateLoading(false);
+                  }
+                }}
+              >
+                {createLoading ? 'Creating...' : 'Create'}
+              </button>
             </div>
           </div>
         </div>
