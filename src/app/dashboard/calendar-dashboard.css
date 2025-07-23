@@ -74,7 +74,15 @@
 } 
 
 
-
+.luminance {
+  box-shadow: 18px 32px 30px 0px rgba(4, 4, 22, 0.75) inset;
+-webkit-box-shadow: 18px 32px 30px 0px rgba(4, 4, 22, 0.651) inset;
+-moz-box-shadow: 18px 32px 30px 0px rgba(4, 4, 22, 0.75) inset;
+border: 1px solid #020f58;
+}
+.luminance-bg {
+  background-color: #6366f1;
+}
 
 
 

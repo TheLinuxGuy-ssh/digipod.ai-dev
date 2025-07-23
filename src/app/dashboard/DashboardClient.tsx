@@ -269,7 +269,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
         </div>
       ) : (
         <>
-          <div className={`transition-all duration-300 ${expanded ? 'opacity-0 h-0 pointer-events-none' : 'opacity-100 h-auto'}`}>{summary}</div>
+          <div className={`transition-all w-full duration-300 ${expanded ? 'opacity-0 h-0 pointer-events-none' : 'opacity-100 h-auto'}`}>{summary}</div>
           <div
             className={`transition-all duration-500 ease-in-out ${expanded ? 'opacity-100 max-h-[320px] mt-2' : 'opacity-0 max-h-0 pointer-events-none'} w-full`}
             style={{ overflowY: expanded ? 'auto' : 'hidden' }}
@@ -278,7 +278,6 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
           </div>
         </>
       )}
-      <span className="absolute top-4 right-4 text-xs text-blue-100 bg-blue-900/80 px-2 py-1 rounded-lg shadow-md select-none">{expanded ? 'Click to collapse' : 'Click to expand'}</span>
     </div>
   );
 }
@@ -847,7 +846,7 @@ export default function DashboardClient() {
       <div className="w-full flex justify-end px-20 mb-4">
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-5 py-2 bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-bold rounded-xl shadow-lg hover:scale-105 transition flex items-center gap-2"
+          className="px-5 py-2 bg-white text-black font-bold rounded-xl hover:scale-105 transition flex items-center gap-2"
         >
           <span className="text-lg">+</span> Create a New Project
         </button>
@@ -891,7 +890,7 @@ export default function DashboardClient() {
                   </div>
                 ) : (
                   <div className="text-blue-100 text-base mt-2 " >
-                    <p className="mb-4">{aiSummary || 'No AI changes detected.'}</p>
+                    <p className="mb-4 w-full">{aiSummary || 'No AI changes detected.'}</p>
                     {summaryData && typeof summaryData === 'object' && 'summary' in summaryData && (
                       <div className="bg-blue-900/20 rounded-lg p-4 space-y-2">
                         <h4 className="font-semibold text-blue-200 mb-3">AI Activity Breakdown (Last 24h):</h4>
@@ -1672,7 +1671,7 @@ export default function DashboardClient() {
               />
               {createError && <div className="text-red-400 text-sm">{createError}</div>}
               <button
-                className="mt-4 px-5 py-2 bg-gradient-to-r from-fuchsia-600 to-cyan-600 text-white font-bold rounded-xl shadow-lg hover:scale-105 transition flex items-center gap-2 disabled:opacity-60"
+                className="mt-4 px-5 py-3 text-center luminance luminance-bg text-white font-bold rounded-xl shadow-lg hover:scale-105 transition flex items-center gap-2 disabled:opacity-60"
                 disabled={createLoading || !newProjectName || !newClientName || !newClientEmail}
                 onClick={async () => {
                   setCreateLoading(true);
