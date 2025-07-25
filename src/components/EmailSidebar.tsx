@@ -59,6 +59,12 @@ interface GmailUser {
   gmailConnected: boolean;
 }
 
+declare global {
+  interface Window {
+    gmailConnected?: boolean;
+  }
+}
+
 export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailSidebarProps) {
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -149,6 +155,10 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
 
   // Remove Gmail mailbox logic from mailboxes
   const gmailConnected = gmailUser?.gmailConnected;
+  // Expose gmailConnected globally for other components/pages
+  if (typeof window !== 'undefined') {
+    window.gmailConnected = gmailConnected;
+  }
   const gmailAccount = gmailConnected ? {
     id: 'gmail-oauth',
     email: gmailUser!.email,
@@ -282,6 +292,10 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
           <Link href="/dashboard" className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} font-semibold transition text-sm w-full bg-gray-800 text-blue-200 hover:bg-gray-700`}>
             <FolderIcon className="h-5 w-5" />
             {!collapsed && 'Projects'}
+          </Link>
+          <Link href="/notes" className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} font-semibold transition text-sm w-full bg-gray-800 text-blue-200 hover:bg-gray-700`}>
+            <DocumentIcon className="h-5 w-5" />
+            {!collapsed && 'Notes'}
           </Link>
           <button
             className={`flex items-center gap-2 px-3 py-2 rounded-lg ${collapsed ? 'justify-center' : ''} text-gray-500 font-semibold transition text-sm w-full cursor-not-allowed opacity-50 bg-gray-800`}
@@ -471,7 +485,7 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
             <Image src={currentUser.photoURL} alt="Avatar" width={64} height={64} className="rounded-lg" />
           ) : (
             <div className="w-16 h-16 bg-green-500 rounded-lg flex items-center justify-center text-2xl font-bold">
-              {(firestoreName && firestoreName.charAt(0).toUpperCase()) || currentUser?.displayName?.charAt(0).toUpperCase() || 'U'}
+              {currentUser?.email?.charAt(0).toUpperCase() || (firestoreName && firestoreName.charAt(0).toUpperCase()) || currentUser?.displayName?.charAt(0).toUpperCase() || 'U'}
             </div>
           )}
           {!collapsed && (

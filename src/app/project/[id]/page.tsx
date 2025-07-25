@@ -332,11 +332,13 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'complete'>(project?.paymentStatus ?? 'pending');
   const amountLeft = Math.max((totalAmount || 0) - (advancePaid || 0), 0);
   const [paymentDueDate, setPaymentDueDate] = useState<string | null>(project?.paymentDueDate ?? null);
+  const [currency, setCurrency] = useState(project?.currency || 'USD');
   useEffect(() => {
     setAdvancePaid(project?.advancePaid ?? 0);
     setTotalAmount(project?.totalAmount ?? 0);
     setPaymentStatus(project.paymentStatus ?? 'pending');
     setPaymentDueDate(project.paymentDueDate ?? null);
+    setCurrency(project.currency || 'USD');
   }, [project]);
 
   // Check if user is authenticated
@@ -366,6 +368,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       setPaymentDueDate(project.paymentDueDate ?? null);
       setEmailFilterFromDate(project.filterFromDate || undefined);
       setEmailFilterToDate(project.filterToDate || undefined);
+      setCurrency(project.currency || 'USD');
     }
   }, [project]);
 
@@ -541,7 +544,7 @@ export default function ProjectDetailPage({ params }: { params: any }) {
     const res = await fetch(`/api/projects/${project?.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ advancePaid, totalAmount, paymentDueDate }),
+      body: JSON.stringify({ advancePaid, totalAmount, paymentDueDate, currency }),
     });
     if (res.ok) {
       mutate();
@@ -1095,45 +1098,62 @@ export default function ProjectDetailPage({ params }: { params: any }) {
         {/* Payment & Invoicing */}
         <div className="mb-16 mt-16">
           <h2 className="text-lg font-bold text-blue-200 mb-3">Payment & Invoicing</h2>
-          <div className="bg-gray-800 rounded-xl p-8 border border-blue-900">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="flex flex-col gap-4">
-                <label className="text-xs text-blue-200 font-semibold mb-1">Total Project Amount ($)</label>
-                <input
-                  type="number"
-                  value={totalAmount}
-                  onChange={e => setTotalAmount(parseFloat(e.target.value) || 0)}
-                  onBlur={handlePaymentUpdate}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-white focus:ring-2 focus:ring-blue-400"
-                  placeholder="e.g. 5000"
-                />
+          <div className="bg-gray-800 rounded-xl p-8 border border-blue-900 overflow-visible">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+              <div className="flex flex-col w-full">
+                <label className="text-xs text-blue-200 font-semibold mb-2">Total Project Amount</label>
+                <div className="flex flex-row gap-2 w-full">
+                  <select
+                    className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-2 text-white focus:ring-2 focus:ring-blue-400 w-32"
+                    value={currency}
+                    onChange={e => { setCurrency(e.target.value); handlePaymentUpdate(); }}
+                  >
+                    <option value="USD">$ (USD)</option>
+                    <option value="INR">₹ (INR)</option>
+                    <option value="EUR">€ (EUR)</option>
+                    <option value="GBP">£ (GBP)</option>
+                    <option value="AUD">A$ (AUD)</option>
+                    <option value="CAD">C$ (CAD)</option>
+                    <option value="SGD">S$ (SGD)</option>
+                    <option value="JPY">¥ (JPY)</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <input
+                    type="number"
+                    value={totalAmount}
+                    onChange={e => setTotalAmount(parseFloat(e.target.value) || 0)}
+                    onBlur={handlePaymentUpdate}
+                    className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-white focus:ring-2 focus:ring-blue-400 w-full"
+                    placeholder="e.g. 5000"
+                  />
+                </div>
               </div>
-              <div className="flex flex-col gap-4">
-                <label className="text-xs text-blue-200 font-semibold mb-1">Advance Paid ($)</label>
+              <div className="flex flex-col w-full">
+                <label className="text-xs text-blue-200 font-semibold mb-2">Advance Paid</label>
                 <input
                   type="number"
                   value={advancePaid}
                   onChange={e => setAdvancePaid(parseFloat(e.target.value) || 0)}
                   onBlur={handlePaymentUpdate}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-white focus:ring-2 focus:ring-blue-400"
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-white focus:ring-2 focus:ring-blue-400 w-full"
                   placeholder="e.g. 1000"
                 />
               </div>
-              <div className="flex flex-col gap-4">
-                <label className="text-xs text-blue-200 font-semibold mb-1">Payment Due Date</label>
+              <div className="flex flex-col w-full">
+                <label className="text-xs text-blue-200 font-semibold mb-2">Payment Due Date</label>
                 <input
                   type="date"
                   value={paymentDueDate || ''}
                   onChange={e => setPaymentDueDate(e.target.value)}
                   onBlur={handlePaymentUpdate}
-                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-white focus:ring-2 focus:ring-blue-400"
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-3 text-white focus:ring-2 focus:ring-blue-400 w-full"
                 />
               </div>
             </div>
-            <div className="mt-8 pt-6 border-t border-gray-700 flex justify-between items-center">
+            <div className="mt-8 pt-6 border-t border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
                 <div className="text-sm text-blue-200">Amount Left to Pay:</div>
-                <div className="text-3xl font-bold text-white">${amountLeft}</div>
+                <div className="text-3xl font-bold text-white">{currencySymbol(currency)}{amountLeft}</div>
               </div>
               <div>
                 <div className="text-sm text-blue-200">Payment Status:</div>
@@ -1177,4 +1197,18 @@ export default function ProjectDetailPage({ params }: { params: any }) {
       </div>
     </div>
   );
+}
+
+function currencySymbol(cur: string) {
+  switch (cur) {
+    case 'USD': return '$';
+    case 'INR': return '₹';
+    case 'EUR': return '€';
+    case 'GBP': return '£';
+    case 'AUD': return 'A$';
+    case 'CAD': return 'C$';
+    case 'SGD': return 'S$';
+    case 'JPY': return '¥';
+    default: return cur + ' ';
+  }
 }

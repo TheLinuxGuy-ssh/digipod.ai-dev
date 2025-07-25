@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { FolderIcon, EllipsisVerticalIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { FolderIcon, EllipsisVerticalIcon, ChevronDownIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import AntiHustleMeter from '@/components/AntiHustleMeter';
 import useSWR from 'swr';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -35,6 +35,8 @@ interface Project {
   parentId?: string;
   trigger?: string;
   gmailId?: string; // Added for Gmail ID
+  currency?: string; // Added for currency
+  totalAmount?: number; // Added for total amount
 }
 
 interface DashboardEmail {
@@ -73,6 +75,10 @@ interface Todo {
   type: 'project' | 'calendar';
   projectName?: string;
   confidence?: number;
+  createdAt?: {
+    _seconds: number;
+    _nanoseconds: number;
+  };
 }
 
 interface TodosApiResponse {
@@ -104,7 +110,7 @@ interface DashboardSummary {
 const fetcher = async (url: string) => {
   const user = auth.currentUser;
   if (!user) return [];
-  const token = await user.getIdToken();
+  const token = await user.getIdToken(true);
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return [];
   const data = await res.json();
@@ -145,7 +151,7 @@ async function fetchGmailUser() {
 async function fetchWithAuth<T>(url: string): Promise<T> {
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
-  const token = await user.getIdToken();
+  const token = await user.getIdToken(true);
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ message: `Request failed with status ${res.status}` }));
@@ -193,6 +199,11 @@ function ProjectCard({ project, onDelete, onEdit }: { project: Project, onDelete
         <span className="font-semibold text-lg text-white group-hover:text-purple-200 transition-colors">{project.name}</span>
       </div>
       <div className="text-blue-100 mb-2 relative z-10">{project.clientEmail ? `Client: ${project.clientEmail}` : 'No client email set'}</div>
+      {project.totalAmount !== undefined && project.totalAmount !== null && (
+        <div className="text-blue-200 text-sm mt-2">
+          Payment: {project.currency ? `${project.currency} ` : ''}{project.totalAmount}
+        </div>
+      )}
       <div className="flex flex-col gap-2 relative z-10">
         <span className="text-xs text-blue-200">Created: {getDateFromEmail(project.createdAt).toLocaleString()}</span>
         <span className="text-xs text-blue-200">Phase: <span className="font-semibold text-blue-300">{project.currentPhase}</span></span>
@@ -207,7 +218,7 @@ function ProjectCard({ project, onDelete, onEdit }: { project: Project, onDelete
   );
 }
 
-function ExpandableCard({ expanded, onClick, title, icon, summary, content, loading, gradientClass, isGmailConnected }: {
+function ExpandableCard({ expanded, onClick, title, icon, summary, content, loading, gradientClass, isGmailConnected, onRefresh }: {
   expanded: boolean;
   onClick: () => void;
   title: React.ReactNode;
@@ -217,6 +228,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
   loading: boolean;
   gradientClass: string;
   isGmailConnected: boolean;
+  onRefresh?: () => void;
 }) {
   return (
     <div
@@ -224,9 +236,9 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
       role="button"
       aria-label={`Expand ${title}`}
       className={
-        `${gradientClass} rounded-2xl shadow-xl p-8 flex flex-col backdrop-blur-md  card-bg  items-start min-h-[180px] border-1 h-full relative  transition-all duration-300 outline-none focus:ring-4 focus:ring-blue-400/50 hover:scale-[1.02] hover:shadow-2xl border-2 border-digi hover:border-blue-400 ${expanded ? 'ring-2 ring-blue-300/30 border-blue-400' : ''} ${loading ? 'animate-pulse' : ''}`
+        `${gradientClass} rounded-2xl shadow-xl p-8 flex flex-col backdrop-blur-md card-bg items-start ${expanded ? 'h-auto min-h-0' : 'min-h-[180px] h-full'} border-1 relative transition-all duration-300 outline-none focus:ring-4 focus:ring-blue-400/50 hover:scale-[1.02] hover:shadow-2xl border-2 border-digi hover:border-blue-400 ${expanded ? 'ring-2 ring-blue-300/30 border-blue-400' : ''} ${loading ? 'animate-pulse' : ''}`
       }
-      style={{ minHeight: 180, height: '100%', cursor: 'pointer' }}
+      style={{ cursor: 'pointer' }}
       onClick={onClick}
       onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onClick()}
     >
@@ -244,9 +256,23 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
         {icon}
         <div className="flex w-full items-center">
         <h2 className="text-2xl font-extrabold text-white ml-2 flex-1 drop-shadow-lg tracking-tight">{title}</h2>
-        <ChevronDownIcon
-          className={`h-6 w-6 text-blue-100 ml-2 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
-        />
+        <div className="flex items-center gap-2">
+          {onRefresh && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRefresh();
+              }}
+              className="p-1 rounded-full hover:bg-blue-600/30 transition-colors duration-200"
+              title="Refresh data"
+            >
+              <ArrowPathIcon className={`h-5 w-5 text-blue-200 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          )}
+          <ChevronDownIcon
+            className={`h-6 w-6 text-blue-100 ml-2 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+          />
+        </div>
         </div>
       </div>
       {!isGmailConnected ? (
@@ -269,20 +295,23 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
         </div>
       ) : (
         <>
-          <div className={`transition-all w-full duration-300 ${expanded ? 'opacity-0 h-0 pointer-events-none' : 'opacity-100 h-auto'}`}>{summary}</div>
-          <div
-            className={`transition-all duration-500 ease-in-out ${expanded ? 'opacity-100 max-h-[320px] mt-2' : 'opacity-0 max-h-0 pointer-events-none'} w-full`}
-            style={{ overflowY: expanded ? 'auto' : 'hidden' }}
-          >
-            {content}
-          </div>
+          <div className="w-full">{summary}</div>
+          <div className={`w-full mt-2 ${expanded ? '' : 'max-h-[260px] overflow-y-auto'}`}>{content}</div>
         </>
       )}
     </div>
   );
 }
 
-
+const fetchTodosWithAuth = async (url: string) => {
+  // Wait for Firebase Auth to be ready and user to be logged in
+  if (!auth.currentUser) return [];
+  const token = await auth.currentUser.getIdToken(true);
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.todos || [];
+};
 
 export default function DashboardClient() {
   const [toast, setToast] = useState<string | null>(null);
@@ -297,7 +326,7 @@ export default function DashboardClient() {
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const shouldFetchProjects = authReady && !!auth.currentUser;
-  const { data: projectsData = [], mutate } = useSWR(
+  const { data: projectsData = [], mutate: mutateProjects } = useSWR(
     shouldFetchProjects ? '/api/projects' : null,
     fetcher,
     { revalidateOnFocus: false }
@@ -348,6 +377,16 @@ export default function DashboardClient() {
   const [newClientEmail, setNewClientEmail] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState('');
+
+  // Add state for currency
+  const [editCurrency, setEditCurrency] = useState(editProject?.currency || 'INR');
+
+  const shouldFetchTodos = authReady && !!auth.currentUser;
+  const { mutate: mutateTodos } = useSWR(
+    shouldFetchTodos ? '/api/client-todos' : null,
+    fetchTodosWithAuth,
+    { revalidateOnFocus: false }
+  );
 
   // Helper to toggle card expansion
   const handleCardToggle = (card: string) => {
@@ -443,6 +482,101 @@ export default function DashboardClient() {
     return () => window.removeEventListener('digipod-theme-change', handler);
   }, []);
 
+
+
+  // Refresh functions for each card
+  const refreshSummary = async () => {
+    console.log('🔄 Refreshing summary data...');
+    setLoadingSummary(true);
+    try {
+      const summaryData = await fetchWithAuth<DashboardSummary>('/api/dashboard/summary');
+      setAiSummary(summaryData.summaryText || 'No AI changes detected.');
+      setSummaryData(summaryData);
+    } catch (error) {
+      console.error('Error refreshing summary:', error);
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
+  const refreshTodos = async () => {
+    console.log('🔄 Refreshing todos data...');
+    setLoadingTodos(true);
+    try {
+      // Re-fetch todos data directly
+      const todosData = await fetchTodosWithAuth('/api/client-todos');
+      console.log('🔍 Refreshed todosData:', todosData);
+      
+      // Process the data the same way as in the useEffect
+      const todosRaw: Todo[] = Array.isArray(todosData) ? todosData : [];
+      
+      // Sort todos by creation date (most recent first)
+      todosRaw.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt._seconds * 1000) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt._seconds * 1000) : new Date(0);
+        return dateB.getTime() - dateA.getTime(); // Most recent first
+      });
+      
+      console.log('🔍 Refreshed and sorted todosRaw:', todosRaw);
+      
+      // Combine with calendar events (re-fetch calendar data too)
+      const calendarData = await fetchWithAuth<CalendarEventsApiResponse>('/api/calendar-events');
+      const calendarEventsRaw = calendarData.events || [];
+      
+      const calendarTodos = calendarEventsRaw
+        .filter(ev => {
+          const text = (ev.title + ' ' + (ev.description || '')).toLowerCase();
+          return /call|meeting|zoom|meet/.test(text);
+        })
+        .map(ev => ({
+          task: ev.title,
+          dueDate: ev.date,
+          type: 'calendar' as const,
+        }));
+
+      // Combine all tasks: backend todos, calendar events, and draft tasks
+      setTodos([...todosRaw, ...calendarTodos]);
+      
+    } catch (error) {
+      console.error('Error refreshing todos:', error);
+    } finally {
+      setLoadingTodos(false);
+    }
+  };
+
+  const refreshDrafts = async () => {
+    console.log('🔄 Refreshing drafts data...');
+    setLoadingDrafts(true);
+    try {
+      const draftsData = await fetchWithAuth<AiDraftsApiResponse>('/api/ai-drafts?status=draft&limit=10');
+      setAiDraftsData({ drafts: draftsData.drafts || [] });
+    } catch (error) {
+      console.error('Error refreshing drafts:', error);
+    } finally {
+      setLoadingDrafts(false);
+    }
+  };
+
+  // Listen for todo-added events to refresh todos data
+  useEffect(() => {
+    const handleTodoAdded = () => {
+      console.log('🔄 Todo added event received, refreshing todos...');
+      mutateTodos(); // Refresh the todos data
+    };
+    
+    const handleSummaryRefresh = () => {
+      console.log('🔄 Summary refresh event received, refreshing summary...');
+      refreshSummary(); // Now we can use refreshSummary since it's defined above
+    };
+    
+    window.addEventListener('todo-added', handleTodoAdded);
+    window.addEventListener('summary-refresh', handleSummaryRefresh);
+    return () => {
+      window.removeEventListener('todo-added', handleTodoAdded);
+      window.removeEventListener('summary-refresh', handleSummaryRefresh);
+    };
+  }, [mutateTodos, refreshSummary]);
+
   useEffect(() => {
     if (!authReady) return;
     setLoadingSummary(true); setLoadingCalendar(true); setLoadingTodos(true); setLoadingDrafts(true);
@@ -450,7 +584,7 @@ export default function DashboardClient() {
     console.log('Starting API calls for dashboard data...');
     Promise.all([
       fetchWithAuth<CalendarEventsApiResponse>('/api/calendar-events').catch((err): CalendarEventsApiResponse => { console.log('Calendar API error:', err); return { error: (err as Error).message || 'Failed to load calendar events', events: [] }; }),
-      fetchWithAuth<TodosApiResponse>('/api/client-todos').catch((err): TodosApiResponse => { console.log('Todos API error:', err); return { error: (err as Error).message || 'Failed to load to-dos', todos: [] }; }),
+      fetchTodosWithAuth('/api/client-todos').catch((err): TodosApiResponse => { console.log('Todos API error:', err); return { error: (err as Error).message || 'Failed to load to-dos', todos: [] }; }),
       fetchWithAuth<AiDraftsApiResponse>('/api/ai-drafts?status=draft&limit=10').catch((err): AiDraftsApiResponse => { console.log('AI drafts API error:', err); return { error: (err as Error).message || 'Failed to load AI drafts', drafts: [] }; }),
       fetchWithAuth<DashboardSummary>('/api/dashboard/summary').catch((err): DashboardSummary => { console.log('Dashboard summary API error:', err); return { error: (err as Error).message || 'Failed to load dashboard summary' }; })
     ]).then(([calendarData, todosData, aiDraftsData, summaryData]) => {
@@ -502,21 +636,20 @@ export default function DashboardClient() {
         }
       }
 
-      if (todosData.error) {
-        if (todosData.error.includes('Unauthorized')) {
-          setToast('To-Do list: Not authorized. Please log in.');
-        } else if (todosData.error.includes('No Google token')) {
-          setToast('To-Do list: Not connected. Please reconnect Google.');
-        } else if (todosData.error.includes('Google Calendar API error')) {
-          setToast('To-Do list: API error. Try reconnecting.');
-        } else {
-          todosRaw = todosData.todos || [];
-        }
-        setLoadingTodos(false);
-      } else {
-        todosRaw = todosData.todos || [];
-        setLoadingTodos(false);
-      }
+      // todosData is already the array of todos from fetchTodosWithAuth
+      console.log('🔍 Processing todosData:', todosData);
+      todosRaw = Array.isArray(todosData) ? todosData : [];
+      console.log('🔍 Processed todosRaw:', todosRaw);
+      
+      // Sort todos by creation date (most recent first)
+      todosRaw.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt._seconds * 1000) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt._seconds * 1000) : new Date(0);
+        return dateB.getTime() - dateA.getTime(); // Most recent first
+      });
+      
+      console.log('🔍 Sorted todosRaw:', todosRaw);
+      setLoadingTodos(false);
 
       // Combine project/client todos and calendar events
       const calendarTodos = calendarEventsRaw
@@ -613,7 +746,7 @@ export default function DashboardClient() {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
-      mutate();
+      mutateProjects();
       setToast(`Project "${project.name}" deleted successfully.`);
     } else {
       const errorData = await res.json().catch(() => ({}));
@@ -628,6 +761,7 @@ export default function DashboardClient() {
     setEditProject(project);
     setEditPhases(project.phases && project.phases.length > 0 ? project.phases : ['DISCOVERY', 'DESIGN', 'REVISIONS', 'DELIVERY']);
     setEditName(project.name);
+    setEditCurrency(project.currency || 'INR');
     setEditError(null);
   };
 
@@ -649,11 +783,11 @@ export default function DashboardClient() {
     const res = await fetch(`/api/projects/${editProject.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ phases: editPhases, name: editName }),
+      body: JSON.stringify({ phases: editPhases, name: editName, currency: editCurrency }),
     });
     setEditLoading(false);
     if (res.ok) {
-      mutate();
+      mutateProjects();
       setEditProject(null);
     } else {
       setEditError('Failed to update project.');
@@ -702,6 +836,8 @@ export default function DashboardClient() {
       setToast('Failed to decline draft.');
     }
   };
+
+
 
   // 2. Fetch client messages and parent email when modal opens
   useEffect(() => {
@@ -774,6 +910,18 @@ export default function DashboardClient() {
     };
     fetchParentEmail();
   }, [selectedDraft]);
+
+  // Onboarding redirect logic
+  React.useEffect(() => {
+    // Only run on client
+    if (typeof window !== 'undefined') {
+      const onboardingComplete = localStorage.getItem('digipod-onboarding-complete');
+      // Check for Gmail connection (window.gmailConnected is set by sidebar)
+      if (window.gmailConnected && !onboardingComplete) {
+        router.push('/onboarding');
+      }
+    }
+  }, []);
 
   if (authChecking) {
     return (
@@ -863,12 +1011,13 @@ export default function DashboardClient() {
       <div id="create-project-section" className="px-4 md:px-12">
         <div className="flex flex-col md:flex-row items-stretch justify-center gap-8 mb-12">
           {/* What's Changed Card - moved from top, with full breakdown */}
-          <div className="flex-1 max-w-xl flex flex-col justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-b from-cyan-800 to-fuchsia-800 min-h-[220px] h-[260px]">
+          <div className={`flex-1 max-w-xl flex flex-col justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-b from-cyan-800 to-fuchsia-800 min-h-[220px] ${expandedCard === 'summary' ? 'h-auto' : 'h-[260px]'}`}>
             <ExpandableCard
               expanded={expandedCard === 'summary'}
               onClick={() => handleCardToggle('summary')}
               title="What's Changed"
               icon={<SparklesIcon className="h-8 w-8 text-yellow-300" />}
+              onRefresh={refreshSummary}
               summary={
                 loadingSummary ? (
                   <div className="space-y-2 w-full">
@@ -934,7 +1083,7 @@ export default function DashboardClient() {
             />
           </div>
           {/* Upcoming To-Dos Card */}
-          <div className="flex-1 max-w-xl w-full min-w-[320px] flex flex-col justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-b from-cyan-800 to-fuchsia-800 min-h-[260px] h-[260px]">
+          <div className={`flex-1 max-w-xl w-full min-w-[320px] flex flex-col justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-b from-cyan-800 to-fuchsia-800 min-h-[260px] ${expandedCard === 'todos' ? 'h-auto' : 'h-[260px]'}`}>
             <ExpandableCard
               expanded={expandedCard === 'todos'}
               onClick={() => handleCardToggle('todos')}
@@ -945,6 +1094,7 @@ export default function DashboardClient() {
                 </>
               }
               icon={<ClipboardDocumentCheckIcon className="h-8 w-8 mr-2 text-green-200 drop-shadow-lg" />}
+              onRefresh={refreshTodos}
               summary={
                 loadingTodos ? (
                   <div className="space-y-2 w-full">
@@ -1070,7 +1220,7 @@ export default function DashboardClient() {
             />
           </div>
           {/* AI Drafts Card */}
-          <div className="flex-1 max-w-xl w-full min-w-[320px] flex flex-col justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-b from-cyan-800 to-fuchsia-800 min-h-[260px] h-[260px]">
+          <div className={`flex-1 max-w-xl w-full min-w-[320px] flex flex-col justify-between rounded-2xl shadow-2xl p-0 border-2 border-blue-900/30 bg-gradient-to-b from-cyan-800 to-fuchsia-800 min-h-[260px] ${expandedCard === 'drafts' ? 'h-auto' : 'h-[260px]'}`}>
             <ExpandableCard
               expanded={expandedCard === 'drafts'}
               onClick={() => handleCardToggle('drafts')}
@@ -1081,6 +1231,7 @@ export default function DashboardClient() {
                 </>
               }
               icon={<EnvelopeOpenIcon className="h-8 w-8 mr-2 text-blue-200 drop-shadow-lg" />}
+              onRefresh={refreshDrafts}
               summary={
                 loadingDrafts ? (
                   <div className="space-y-2 w-full">
@@ -1423,6 +1574,25 @@ export default function DashboardClient() {
                 />
               </div>
               <div className="mb-4">
+                <label className="block text-blue-100 mb-1">Payment Currency</label>
+                <select
+                  className="w-full border px-3 py-2 rounded bg-gray-800 text-white border-gray-700"
+                  value={editCurrency}
+                  onChange={e => setEditCurrency(e.target.value)}
+                  required
+                >
+                  <option value="INR">INR (₹)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="AUD">AUD (A$)</option>
+                  <option value="CAD">CAD (C$)</option>
+                  <option value="SGD">SGD (S$)</option>
+                  <option value="JPY">JPY (¥)</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="mb-4">
                 <label className="block text-blue-100 mb-1">Phases</label>
                 <DragDropContext
                   onDragEnd={(result: DropResult) => {
@@ -1679,7 +1849,7 @@ export default function DashboardClient() {
                   try {
                     const project = await createProject(newProjectName, newClientEmail, newClientName);
                     if (project && project.id) {
-                      mutate(); // Refresh project list
+                      mutateProjects(); // Refresh project list
                       setShowCreateModal(false);
                       setNewProjectName('');
                       setNewClientName('');

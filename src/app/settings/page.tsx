@@ -77,7 +77,7 @@ export default function SettingsPage() {
                   <Image src={user.photoURL} alt="Avatar" width={64} height={64} className="rounded-lg" />
                 ) : (
                   <div className="w-16 h-16 bg-green-500 rounded-lg flex items-center justify-center text-2xl font-bold">
-                    {displayName.charAt(0).toUpperCase() || 'U'}
+                    {user.email?.charAt(0).toUpperCase() || displayName.charAt(0).toUpperCase() || 'U'}
                   </div>
                 )}
               </div>

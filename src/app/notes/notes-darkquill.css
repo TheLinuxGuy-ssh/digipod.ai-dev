@@ -1,0 +1,45 @@
+/* Dark mode for ReactQuill editor */
+.dark-quill .ql-toolbar {
+  background: #181c24;
+  border: 1px solid #23283a;
+  color: #e0e6f0;
+}
+.dark-quill .ql-toolbar button,
+.dark-quill .ql-toolbar .ql-picker-label,
+.dark-quill .ql-toolbar .ql-picker-item {
+  color: #e0e6f0 !important;
+  fill: #e0e6f0 !important;
+}
+.dark-quill .ql-toolbar button:hover,
+.dark-quill .ql-toolbar button.ql-active {
+  background: #23283a;
+  color: #60a5fa !important;
+}
+.dark-quill .ql-container {
+  background: #181c24;
+  color: #e0e6f0;
+  border: 1px solid #23283a;
+  min-height: 400px;
+}
+.dark-quill .ql-editor {
+  background: #181c24;
+  color: #e0e6f0;
+  min-height: 350px;
+}
+.dark-quill .ql-editor::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+.dark-quill .ql-picker {
+  color: #e0e6f0;
+}
+.dark-quill .ql-stroke {
+  stroke: #e0e6f0;
+}
+.dark-quill .ql-fill {
+  fill: #e0e6f0;
+}
+.dark-quill .ql-picker-options {
+  background: #23283a;
+  color: #e0e6f0;
+} 

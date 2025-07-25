@@ -126,4 +126,73 @@ export async function generateAIDraftReply(email: EmailForDraft): Promise<string
   };
   const reply = await getGeminiReply(opts);
   return reply.body;
+}
+
+// Gemini API call helper (placeholder)
+export async function callGeminiAPI(message: string): Promise<{ action: string, params: Record<string, unknown> }> {
+  const lower = message.toLowerCase();
+  if (lower.includes('todo') || lower.includes('to-do') || lower.includes('task') || lower.includes('remind')) {
+    let task = '';
+    const quoted = message.match(/['"]([^'\"]+)['"]/);
+    if (quoted) {
+      task = quoted[1];
+    } else {
+      const match = message.match(/(?:add|create|remind me to) (.+)/i);
+      task = match ? match[1] : 'a new task';
+    }
+    // Only treat as list if the prompt starts with or is about listing/showing, not adding
+    if (
+      (lower.startsWith('list') || lower.startsWith('show') || lower.startsWith('display')) &&
+      (lower.includes('todo') || lower.includes('to-do') || lower.includes('task'))
+    ) {
+      return { action: 'list_todos', params: {} };
+    }
+    return { action: 'add_todo', params: { task } };
+  }
+  if (lower.includes('create project') || lower.includes('new project')) {
+    const match = message.match(/project (?:called|named)? ?['"]?([^'\"]+)['"]?/i);
+    return { action: 'create_project', params: { name: match ? match[1] : 'Untitled Project' } };
+  }
+  if (lower.includes('list projects') || lower.includes('all projects')) {
+    return { action: 'list_projects', params: {} };
+  }
+  if (lower.includes('project status') || lower.includes('status of')) {
+    const match = message.match(/status of ['"]?([^'\"]+)['"]?/i);
+    return { action: 'get_project_status', params: { name: match ? match[1] : '' } };
+  }
+  if (lower.includes('advance phase') || lower.includes('next phase')) {
+    const match = message.match(/project ['"]?([^'\"]+)['"]?/i);
+    return { action: 'advance_phase', params: { name: match ? match[1] : '' } };
+  }
+  if (lower.includes('metrics') || lower.includes('stats')) {
+    return { action: 'get_metrics', params: {} };
+  }
+  if (lower.includes('ai draft')) {
+    if (lower.includes('approve')) {
+      return { action: 'approve_ai_draft', params: {} };
+    }
+    return { action: 'list_ai_drafts', params: {} };
+  }
+  if (lower.includes('client')) {
+    if (lower.includes('add')) {
+      const match = message.match(/add ['"]?([^'\"]+@[^'\"]+)['"]?/i);
+      return { action: 'add_client_filter', params: { email: match ? match[1] : '' } };
+    }
+    if (lower.includes('list') || lower.includes('all clients')) {
+      return { action: 'list_clients', params: {} };
+    }
+  }
+  if (lower.includes('payment')) {
+    return { action: 'show_payments', params: {} };
+  }
+  if (lower.includes('what can you do') || lower.includes('help') || lower.includes('capabilities')) {
+    return { action: 'help', params: {} };
+  }
+  // Fallback: try to extract a to-do using Gemini
+  const todos = await extractEmailTodos(message);
+  if (todos && todos.length > 0) {
+    const todo = todos[0];
+    return { action: 'add_todo', params: { task: todo.task, dueDate: todo.dueDate } };
+  }
+  return { action: 'unknown', params: {} };
 } 

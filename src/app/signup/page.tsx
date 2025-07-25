@@ -9,7 +9,6 @@ import Image from 'next/image';
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [signupCode, setSignupCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
@@ -30,54 +29,25 @@ export default function SignUpPage() {
     return () => unsubscribe();
   }, [router]);
 
-  // Pre-fill signup code from URL parameter
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const codeFromUrl = urlParams.get('code');
-    if (codeFromUrl) {
-      setSignupCode(codeFromUrl.toUpperCase());
-    }
-  }, []);
+
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      // 1. Check code using API
-      const code = signupCode.trim().toUpperCase();
-      let redeemRes;
-
-      if (code === process.env.NEXT_PUBLIC_UNIVERSAL_LICENSE_KEY) {
-        redeemRes = await fetch('/api/universal-license', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, email }),
-        });
-      } else {
-        redeemRes = await fetch('/api/redeem-license', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
-        });
-      }
-
-      const redeemData = await redeemRes.json();
-      if (!redeemData.success) {
-        setError(redeemData.error || 'Invalid or already used signup code.');
-        setLoading(false);
-        return;
-      }
-      // 2. Proceed with Firebase Auth signup
+      // Create user with Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      // 3. Save name to Firestore
+      
+      // Save name to Firestore
       await setDoc(doc(db, 'users', user.uid), {
         name,
         email: user.email,
         createdAt: user.metadata.creationTime || new Date().toISOString(),
       }, { merge: true });
-      // 4. Post to onboard collection for analytics
+      
+      // Post to onboard collection for analytics
       await fetch('/api/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -154,16 +124,6 @@ export default function SignUpPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
-          />
-          <input
-            type="text"
-            className="border px-4 py-3 rounded-lg w-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none bg-gray-800 text-white placeholder-gray-400 border-gray-700"
-            placeholder="Signup Code"
-            value={signupCode}
-            onChange={e => setSignupCode(e.target.value)}
-            required
-            maxLength={16}
-            style={{ textTransform: 'uppercase', letterSpacing: 2 }}
           />
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
           <button
