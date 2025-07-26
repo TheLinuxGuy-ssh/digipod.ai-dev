@@ -336,9 +336,9 @@ export default function ProjectDetailPage({ params }: { params: any }) {
   useEffect(() => {
     setAdvancePaid(project?.advancePaid ?? 0);
     setTotalAmount(project?.totalAmount ?? 0);
-    setPaymentStatus(project.paymentStatus ?? 'pending');
-    setPaymentDueDate(project.paymentDueDate ?? null);
-    setCurrency(project.currency || 'USD');
+    setPaymentStatus(project?.paymentStatus ?? 'pending');
+    setPaymentDueDate(project?.paymentDueDate ?? null);
+    setCurrency(project?.currency || 'USD');
   }, [project]);
 
   // Check if user is authenticated

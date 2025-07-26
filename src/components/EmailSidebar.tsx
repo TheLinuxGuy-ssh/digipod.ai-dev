@@ -10,6 +10,8 @@ import { db } from '@/lib/firebase';
 import FocusModeToggle from './FocusModeToggle';
 import Image from 'next/image';
 import ReactDOM from 'react-dom';
+import { useCallback } from 'react';
+import Script from 'next/script';
 
 // Define a type for mailbox
 interface Mailbox {
@@ -90,6 +92,9 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
   const connectGmailBtnRef = React.useRef<HTMLButtonElement>(null);
   const sidebarScrollRef = React.useRef<HTMLDivElement>(null);
   const [popupPos, setPopupPos] = useState<{ top: number; left: number } | null>(null);
+  const [showPreorderModal, setShowPreorderModal] = useState(false);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const refresh = () => fetchMailboxes().then(setMailboxes);
   
@@ -269,8 +274,62 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
     window.location.href = `/api/auth/google?uid=${user.uid}`;
   };
 
+  // Razorpay handler (copied from landing page)
+  const handleRazorpay = useCallback(() => {
+    if (typeof window === "undefined" || !window.Razorpay) {
+      alert("Razorpay SDK not loaded yet. Please wait a moment and try again.");
+      return;
+    }
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+      amount: 40000,
+      currency: "INR",
+      name: "Digipod",
+      description: "Early Access - Founders Deal",
+      handler: async function (response: unknown) {
+        const res = response as { razorpay_payment_id?: string };
+        if (!res.razorpay_payment_id) {
+          alert("Payment ID missing!");
+          return;
+        }
+        setIsRedirecting(true);
+        // Call backend to verify and get license key
+        const verifyRes = await fetch("/api/verify-razorpay-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payment_id: res.razorpay_payment_id }),
+        });
+        const data = await verifyRes.json();
+        if (data.code) {
+          window.location.href = `/preorder-success?license=${encodeURIComponent(data.code)}&payment_id=${encodeURIComponent(res.razorpay_payment_id)}`;
+        } else {
+          setIsRedirecting(false);
+          alert("Payment verified, but license key not generated. Please contact support.");
+        }
+      },
+      prefill: {
+        name: "",
+        email: "",
+      },
+      theme: {
+        color: "#6c4ad6",
+      },
+    };
+    type RazorpayType = new (options: object) => { open: () => void };
+    const RazorpayConstructor = window.Razorpay as RazorpayType;
+    const rzp = new RazorpayConstructor(options);
+    rzp.open();
+  }, []);
+
   return (
     <div className={`h-screen bg-gray-900 shadow-xl flex flex-col p-0 border-r border-gray-800 transition-all duration-200 relative z-40 ${collapsed ? 'w-20' : 'w-72'} min-w-0`} style={{ maxHeight: '100vh', overflow: 'visible' }}>
+      {/* Razorpay Script */}
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+        onLoad={() => setRazorpayLoaded(true)}
+      />
+      
       {/* Main scrollable area: logo + nav + accounts */}
       <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto flex flex-col p-4 gap-4" style={{ maxHeight: 'calc(100vh - 170px)' }}>
         {/* Collapse/Expand Button - vertically centered */}
@@ -283,9 +342,47 @@ export default function EmailSidebar({ collapsed = false, setCollapsed }: EmailS
           {collapsed ? <ChevronRightIcon className="h-5 w-5 text-blue-400" /> : <ChevronLeftIcon className="h-5 w-5 text-blue-400" />}
         </button>
         {/* Logo/Product */}
-        <div className={`flex items-center justify-center w-full mb-2`} style={{ paddingLeft: collapsed ? 0 : 12 }}>
+        <div className={`flex flex-col items-center justify-center w-full mb-2`} style={{ paddingLeft: collapsed ? 0 : 12 }}>
           <Image src="/digilogo.png" alt="Digipod Logo" width={180} height={180} />
+          <button
+            className={`mt-2 ${collapsed ? 'w-8 h-8 p-0 rounded-full flex items-center justify-center' : 'w-32 px-2 py-1 rounded-md text-xs mx-auto'} bg-[#FFD600] text-[#1a1333] font-bold shadow hover:bg-yellow-300 transition border border-[#FFD600] focus:ring-2 focus:ring-[#FFD600]`}
+            onClick={() => setShowPreorderModal(true)}
+            type="button"
+            title="Pre-order now"
+          >
+            {collapsed ? <span className="text-sm">★</span> : 'Pre-order now'}
+          </button>
         </div>
+        {/* Pre-order Modal */}
+        {showPreorderModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur">
+            <div className="bg-[#18122b] rounded-2xl shadow-lg max-w-md w-full p-8 relative animate-fade-in">
+              <button
+                className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl font-bold"
+                onClick={() => setShowPreorderModal(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              <h2 className="text-2xl font-bold mb-4 text-center text-[#FFD600]">Pre-order Digipod</h2>
+              <ul className="mb-6 text-left list-disc list-inside text-lg text-[#e0d6ff] space-y-2">
+                <li>✔️ Lifetime access to Digipod (no monthly fees)</li>
+                <li>✔️ Early access to all new features</li>
+                <li>✔️ Founders badge on your profile</li>
+                <li>✔️ Priority support & feature requests</li>
+                <li>✔️ Exclusive community access</li>
+              </ul>
+              <button
+                className="w-full bg-[#FFD600] text-[#1a1333] font-bold rounded-full px-8 py-3 shadow-lg hover:bg-yellow-300 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-[#FFD600] border border-[#FFD600] disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={() => { setShowPreorderModal(false); handleRazorpay(); }}
+                disabled={!razorpayLoaded || isRedirecting}
+                type="button"
+              >
+                {razorpayLoaded ? (isRedirecting ? "Redirecting..." : "Pay Now") : "Loading..."}
+              </button>
+            </div>
+          </div>
+        )}
         {/* Navigation Section */}
         <nav className={`flex flex-col gap-1 mt-2 ${collapsed ? 'items-center' : ''}`}>
           {!collapsed && <div className="text-xs text-gray-400 font-semibold mb-1 mt-2 pl-1">Navigation</div>}

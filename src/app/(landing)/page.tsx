@@ -14,6 +14,7 @@ declare global {
 export default function LandingPage() {
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [showPreorderModal, setShowPreorderModal] = useState(false);
 
   const handleRazorpay = useCallback(() => {
     if (typeof window === "undefined" || !window.Razorpay) {
@@ -64,15 +65,55 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen w-full flex flex-col items-center text-white bg-gradient-to-b from-[#0a0820] via-[#14122b] to-[#1a1333]" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Navbar */}
-      <nav className="w-full flex justify-center items-center py-3 px-2 bg-transparent sticky top-0 z-30">
+      <nav className="w-full flex flex-col items-center py-3 px-2 bg-transparent sticky top-0 z-30">
         <div className="flex w-full max-w-3xl items-center justify-between bg-black/90 rounded-2xl border border-[#666] px-5 py-2" style={{ boxShadow: '0 2px 16px 0 #0008' }}>
-          <Image src="/digipod.png" alt="Digipod Logo" height={36} width={120} style={{ height: 36, width: 'auto' }} />
+          <div className="flex flex-col items-center">
+            <Image src="/digipod.png" alt="Digipod Logo" height={36} width={120} style={{ height: 36, width: 'auto' }} />
+            <button
+              className="mt-2 bg-[#FFD600] text-[#1a1333] font-bold rounded-full px-6 py-2 shadow hover:bg-yellow-300 transition border border-[#FFD600] focus:ring-2 focus:ring-[#FFD600]"
+              onClick={() => setShowPreorderModal(true)}
+              type="button"
+            >
+              Pre-order now
+            </button>
+          </div>
           <div className="flex gap-2">
             <Link href="/signin" className="rounded-full px-5 py-2 bg-[#2d186a] text-white font-bold text-base shadow border border-[#3a1c8d] hover:bg-[#3a1c8d] transition-all" style={{ boxShadow: '0 2px 8px 0 #2d186a44' }}>Sign In</Link>
             <Link href="/signup" className="rounded-full px-5 py-2 bg-[#6c4ad6] text-white font-bold text-base shadow border border-[#6c4ad6] hover:bg-[#8f5fff] transition-all" style={{ boxShadow: '0 2px 8px 0 #6c4ad644' }}>Sign Up</Link>
           </div>
         </div>
       </nav>
+
+      {/* Pre-order Modal */}
+      {showPreorderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
+          <div className="bg-[#18122b] rounded-2xl shadow-lg max-w-md w-full p-8 relative animate-fade-in">
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl font-bold"
+              onClick={() => setShowPreorderModal(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <h2 className="text-2xl font-bold mb-4 text-center text-[#FFD600]">Pre-order Digipod</h2>
+            <ul className="mb-6 text-left list-disc list-inside text-lg text-[#e0d6ff] space-y-2">
+              <li>✔️ Lifetime access to Digipod (no monthly fees)</li>
+              <li>✔️ Early access to all new features</li>
+              <li>✔️ Founders badge on your profile</li>
+              <li>✔️ Priority support & feature requests</li>
+              <li>✔️ Exclusive community access</li>
+            </ul>
+            <button
+              className="w-full bg-[#FFD600] text-[#1a1333] font-bold rounded-full px-8 py-3 shadow-lg hover:bg-yellow-300 transition-transform transform hover:scale-105 focus:ring-2 focus:ring-[#FFD600] border border-[#FFD600] disabled:opacity-60 disabled:cursor-not-allowed"
+              onClick={() => { setShowPreorderModal(false); handleRazorpay(); }}
+              disabled={!razorpayLoaded || isRedirecting}
+              type="button"
+            >
+              {razorpayLoaded ? (isRedirecting ? "Redirecting..." : "Pay Now") : "Loading..."}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
       <section className="relative w-full flex flex-col items-center justify-center text-center py-28 px-4 overflow-hidden" style={{ minHeight: '91.25vh' }}>
