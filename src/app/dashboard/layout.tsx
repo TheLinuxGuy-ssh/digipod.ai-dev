@@ -1,5 +1,6 @@
 "use client";
 import EmailSidebar from '../../components/EmailSidebar';
+import AuthenticatedCoPilot from '../../components/AuthenticatedCoPilot';
 import React, { useState } from 'react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div>Your pod co-pilot</div>
         </div>
       </div>
+      <AuthenticatedCoPilot />
     </div>
   );
 } 

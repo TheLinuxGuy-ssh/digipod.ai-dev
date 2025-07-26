@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import SWRProvider from '../components/SWRProvider';
 import Script from 'next/script';
-import AuthenticatedCoPilot from '../components/AuthenticatedCoPilot';
 
 export const metadata: Metadata = {
   title: "Digipod – Anti-Productivity SaaS",
@@ -28,7 +27,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SWRProvider>
           {children}
         </SWRProvider>
-        <AuthenticatedCoPilot />
       </body>
     </html>
   );

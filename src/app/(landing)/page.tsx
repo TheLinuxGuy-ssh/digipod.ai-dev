@@ -69,13 +69,6 @@ export default function LandingPage() {
         <div className="flex w-full max-w-3xl items-center justify-between bg-black/90 rounded-2xl border border-[#666] px-5 py-2" style={{ boxShadow: '0 2px 16px 0 #0008' }}>
           <div className="flex flex-col items-center">
             <Image src="/digipod.png" alt="Digipod Logo" height={36} width={120} style={{ height: 36, width: 'auto' }} />
-            <button
-              className="mt-2 bg-[#FFD600] text-[#1a1333] font-bold rounded-full px-6 py-2 shadow hover:bg-yellow-300 transition border border-[#FFD600] focus:ring-2 focus:ring-[#FFD600]"
-              onClick={() => setShowPreorderModal(true)}
-              type="button"
-            >
-              Pre-order now
-            </button>
           </div>
           <div className="flex gap-2">
             <Link href="/signin" className="rounded-full px-5 py-2 bg-[#2d186a] text-white font-bold text-base shadow border border-[#3a1c8d] hover:bg-[#3a1c8d] transition-all" style={{ boxShadow: '0 2px 8px 0 #2d186a44' }}>Sign In</Link>
