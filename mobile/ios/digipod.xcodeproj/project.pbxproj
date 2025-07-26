@@ -1,0 +1,641 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A4297BA52E3504E4006118E6 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = A4297BA42E3504E4006118E6 /* FirebaseAI */; };
+		A4297BA72E3504E4006118E6 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A4297BA62E3504E4006118E6 /* FirebaseAnalytics */; };
+		A4297BA92E3504E4006118E6 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4297BA82E3504E4006118E6 /* FirebaseAnalyticsCore */; };
+		A4297BAB2E3504E4006118E6 /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = A4297BAA2E3504E4006118E6 /* FirebaseAnalyticsIdentitySupport */; };
+		A4297BAD2E3504E4006118E6 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = A4297BAC2E3504E4006118E6 /* FirebaseAppCheck */; };
+		A498C7B02E350D6C00152B9A /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A498C7AF2E350D6C00152B9A /* FirebaseAuth */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A4297B772E34D6CE006118E6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A4297B612E34D6CC006118E6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A4297B682E34D6CC006118E6;
+			remoteInfo = digipod;
+		};
+		A4297B812E34D6CE006118E6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A4297B612E34D6CC006118E6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A4297B682E34D6CC006118E6;
+			remoteInfo = digipod;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		A4297B692E34D6CC006118E6 /* digipod.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = digipod.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A4297B762E34D6CE006118E6 /* digipodTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = digipodTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A4297B802E34D6CE006118E6 /* digipodUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = digipodUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		A4297B6B2E34D6CC006118E6 /* digipod */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = digipod;
+			sourceTree = "<group>";
+		};
+		A4297B792E34D6CE006118E6 /* digipodTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = digipodTests;
+			sourceTree = "<group>";
+		};
+		A4297B832E34D6CE006118E6 /* digipodUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = digipodUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A4297B662E34D6CC006118E6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A4297BAB2E3504E4006118E6 /* FirebaseAnalyticsIdentitySupport in Frameworks */,
+				A498C7B02E350D6C00152B9A /* FirebaseAuth in Frameworks */,
+				A4297BA72E3504E4006118E6 /* FirebaseAnalytics in Frameworks */,
+				A4297BA92E3504E4006118E6 /* FirebaseAnalyticsCore in Frameworks */,
+				A4297BAD2E3504E4006118E6 /* FirebaseAppCheck in Frameworks */,
+				A4297BA52E3504E4006118E6 /* FirebaseAI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A4297B732E34D6CE006118E6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A4297B7D2E34D6CE006118E6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A4297B602E34D6CC006118E6 = {
+			isa = PBXGroup;
+			children = (
+				A4297B6B2E34D6CC006118E6 /* digipod */,
+				A4297B792E34D6CE006118E6 /* digipodTests */,
+				A4297B832E34D6CE006118E6 /* digipodUITests */,
+				A498C7AE2E350D6C00152B9A /* Frameworks */,
+				A4297B6A2E34D6CC006118E6 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A4297B6A2E34D6CC006118E6 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A4297B692E34D6CC006118E6 /* digipod.app */,
+				A4297B762E34D6CE006118E6 /* digipodTests.xctest */,
+				A4297B802E34D6CE006118E6 /* digipodUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A498C7AE2E350D6C00152B9A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A4297B682E34D6CC006118E6 /* digipod */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A4297B8A2E34D6CE006118E6 /* Build configuration list for PBXNativeTarget "digipod" */;
+			buildPhases = (
+				A4297B652E34D6CC006118E6 /* Sources */,
+				A4297B662E34D6CC006118E6 /* Frameworks */,
+				A4297B672E34D6CC006118E6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A4297B6B2E34D6CC006118E6 /* digipod */,
+			);
+			name = digipod;
+			packageProductDependencies = (
+				A4297BA42E3504E4006118E6 /* FirebaseAI */,
+				A4297BA62E3504E4006118E6 /* FirebaseAnalytics */,
+				A4297BA82E3504E4006118E6 /* FirebaseAnalyticsCore */,
+				A4297BAA2E3504E4006118E6 /* FirebaseAnalyticsIdentitySupport */,
+				A4297BAC2E3504E4006118E6 /* FirebaseAppCheck */,
+				A498C7AF2E350D6C00152B9A /* FirebaseAuth */,
+			);
+			productName = digipod;
+			productReference = A4297B692E34D6CC006118E6 /* digipod.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A4297B752E34D6CE006118E6 /* digipodTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A4297B8D2E34D6CE006118E6 /* Build configuration list for PBXNativeTarget "digipodTests" */;
+			buildPhases = (
+				A4297B722E34D6CE006118E6 /* Sources */,
+				A4297B732E34D6CE006118E6 /* Frameworks */,
+				A4297B742E34D6CE006118E6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A4297B782E34D6CE006118E6 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A4297B792E34D6CE006118E6 /* digipodTests */,
+			);
+			name = digipodTests;
+			packageProductDependencies = (
+			);
+			productName = digipodTests;
+			productReference = A4297B762E34D6CE006118E6 /* digipodTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		A4297B7F2E34D6CE006118E6 /* digipodUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A4297B902E34D6CE006118E6 /* Build configuration list for PBXNativeTarget "digipodUITests" */;
+			buildPhases = (
+				A4297B7C2E34D6CE006118E6 /* Sources */,
+				A4297B7D2E34D6CE006118E6 /* Frameworks */,
+				A4297B7E2E34D6CE006118E6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A4297B822E34D6CE006118E6 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A4297B832E34D6CE006118E6 /* digipodUITests */,
+			);
+			name = digipodUITests;
+			packageProductDependencies = (
+			);
+			productName = digipodUITests;
+			productReference = A4297B802E34D6CE006118E6 /* digipodUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A4297B612E34D6CC006118E6 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1630;
+				LastUpgradeCheck = 1630;
+				TargetAttributes = {
+					A4297B682E34D6CC006118E6 = {
+						CreatedOnToolsVersion = 16.3;
+					};
+					A4297B752E34D6CE006118E6 = {
+						CreatedOnToolsVersion = 16.3;
+						TestTargetID = A4297B682E34D6CC006118E6;
+					};
+					A4297B7F2E34D6CE006118E6 = {
+						CreatedOnToolsVersion = 16.3;
+						TestTargetID = A4297B682E34D6CC006118E6;
+					};
+				};
+			};
+			buildConfigurationList = A4297B642E34D6CC006118E6 /* Build configuration list for PBXProject "digipod" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A4297B602E34D6CC006118E6;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A4297B6A2E34D6CC006118E6 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A4297B682E34D6CC006118E6 /* digipod */,
+				A4297B752E34D6CE006118E6 /* digipodTests */,
+				A4297B7F2E34D6CE006118E6 /* digipodUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A4297B672E34D6CC006118E6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A4297B742E34D6CE006118E6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A4297B7E2E34D6CE006118E6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A4297B652E34D6CC006118E6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A4297B722E34D6CE006118E6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A4297B7C2E34D6CE006118E6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A4297B782E34D6CE006118E6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A4297B682E34D6CC006118E6 /* digipod */;
+			targetProxy = A4297B772E34D6CE006118E6 /* PBXContainerItemProxy */;
+		};
+		A4297B822E34D6CE006118E6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A4297B682E34D6CC006118E6 /* digipod */;
+			targetProxy = A4297B812E34D6CE006118E6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A4297B882E34D6CE006118E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 3FKTLL5XPW;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A4297B892E34D6CE006118E6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 3FKTLL5XPW;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A4297B8B2E34D6CE006118E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3FKTLL5XPW;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Digipod;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kashish.digipod.digipod;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A4297B8C2E34D6CE006118E6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3FKTLL5XPW;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Digipod;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kashish.digipod.digipod;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A4297B8E2E34D6CE006118E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3FKTLL5XPW;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kashish.digipod.digipodTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/digipod.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/digipod";
+			};
+			name = Debug;
+		};
+		A4297B8F2E34D6CE006118E6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3FKTLL5XPW;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kashish.digipod.digipodTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/digipod.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/digipod";
+			};
+			name = Release;
+		};
+		A4297B912E34D6CE006118E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3FKTLL5XPW;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kashish.digipod.digipodUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = digipod;
+			};
+			name = Debug;
+		};
+		A4297B922E34D6CE006118E6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3FKTLL5XPW;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kashish.digipod.digipodUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = digipod;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A4297B642E34D6CC006118E6 /* Build configuration list for PBXProject "digipod" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A4297B882E34D6CE006118E6 /* Debug */,
+				A4297B892E34D6CE006118E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A4297B8A2E34D6CE006118E6 /* Build configuration list for PBXNativeTarget "digipod" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A4297B8B2E34D6CE006118E6 /* Debug */,
+				A4297B8C2E34D6CE006118E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A4297B8D2E34D6CE006118E6 /* Build configuration list for PBXNativeTarget "digipodTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A4297B8E2E34D6CE006118E6 /* Debug */,
+				A4297B8F2E34D6CE006118E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A4297B902E34D6CE006118E6 /* Build configuration list for PBXNativeTarget "digipodUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A4297B912E34D6CE006118E6 /* Debug */,
+				A4297B922E34D6CE006118E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A4297BA42E3504E4006118E6 /* FirebaseAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAI;
+		};
+		A4297BA62E3504E4006118E6 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		A4297BA82E3504E4006118E6 /* FirebaseAnalyticsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsCore;
+		};
+		A4297BAA2E3504E4006118E6 /* FirebaseAnalyticsIdentitySupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsIdentitySupport;
+		};
+		A4297BAC2E3504E4006118E6 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		A498C7AF2E350D6C00152B9A /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A4297B612E34D6CC006118E6 /* Project object */;
+}

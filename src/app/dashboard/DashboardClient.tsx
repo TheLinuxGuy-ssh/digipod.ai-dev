@@ -269,9 +269,9 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
               <ArrowPathIcon className={`h-5 w-5 text-blue-200 ${loading ? 'animate-spin' : ''}`} />
             </button>
           )}
-          <ChevronDownIcon
-            className={`h-6 w-6 text-blue-100 ml-2 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
-          />
+        <ChevronDownIcon
+          className={`h-6 w-6 text-blue-100 ml-2 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+        />
         </div>
         </div>
       </div>
@@ -649,7 +649,7 @@ export default function DashboardClient() {
       });
       
       console.log('🔍 Sorted todosRaw:', todosRaw);
-      setLoadingTodos(false);
+        setLoadingTodos(false);
 
       // Combine project/client todos and calendar events
       const calendarTodos = calendarEventsRaw

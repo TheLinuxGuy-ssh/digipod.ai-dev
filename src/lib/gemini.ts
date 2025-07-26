@@ -10,7 +10,10 @@ export async function getGeminiReply(
   opts: GeminiEmailPreferences
 ): Promise<{ subject: string; body: string; closing: string; signature: string; trigger?: string }> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+  if (!apiKey) {
+    console.error('❌ GEMINI_API_KEY not set');
+    return { subject: '', body: 'Sorry, I could not process the message due to a configuration issue.', closing: '', signature: opts.signature || '', trigger: undefined };
+  }
 
   // Build prompt with user preferences
   const prompt = `You are Digipod, an AI assistant for creative agencies. Generate a polished, professional email reply in JSON format.\n\nPreferences:\n- Tone: ${opts.tone || 'professional'}\n- Template: ${opts.template || 'default'}\n- Client Name: ${opts.clientName || '[Client Name]'}\n\nIMPORTANT: DO NOT include any signature, sign-off, or closing in your reply. ONLY generate the subject and the main body of the email. The signature will be added separately by the application.\n- For the greeting, use: Dear {{CLIENT NAME}},\n- Substitute {{CLIENT NAME}} with the provided client name.\n- NEVER use placeholders like 'Client', 'Your Name', or any generic text.\n\nYour ONLY response should be a valid JSON object in this format, with no extra text or explanation:\n{\n  "subject": string,\n  "body": string,\n  "closing": "",\n  "signature": "",\n  "trigger": "client_approved" | "client_left_feedback" | null\n}\n\nThe email should be well-formatted, with a clear subject, a greeting (use the provided client name), and a main body.\n\nClient message: "${opts.message}"`;
@@ -51,7 +54,10 @@ export async function getGeminiReply(
 
 export async function classifyClientIntent(message: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+  if (!apiKey) {
+    console.error('❌ GEMINI_API_KEY not set');
+    return 'unsure';
+  }
 
   const prompt = `You are a smart AI email assistant for a creative agency tool. Your job is to classify the client's message into one of the following intents:
 - approve_phase_move
@@ -78,34 +84,49 @@ Client message: "${message}"`;
 // Improved AI prompt for extracting actionable tasks from email bodies
 export async function extractEmailTodos(emailBody: string): Promise<Array<{ task: string; dueDate: string | null; source: string; confidence: number }>> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+  if (!apiKey) {
+    console.error('❌ GEMINI_API_KEY not set');
+    return [];
+  }
 
-  const prompt = `You are an intelligent assistant that reads email messages and extracts actionable tasks for the user.\n\nInstructions:\n- Carefully read the email body below.\n- Identify any requests, assignments, deadlines, or follow-up actions that the user is expected to do.\n- Ignore greetings, signatures, and non-actionable information.\n- If there are multiple tasks, list each one separately.\n- If there are no actionable tasks, return an empty list.\n\nOutput format:\nRespond with a JSON array of objects, each with these fields:\n- \"task\": A concise description of the action required (max 120 characters).\n- \"dueDate\": The due date if mentioned, otherwise null.\n- \"source\": \"email\"\n- \"confidence\": A number from 0 to 1 indicating your confidence this is a real to-do.\n\nExample output:\n\`\`\`json\n[\n  { \"task\": \"Send the signed contract to John\", \"dueDate\": \"2024-07-01\", \"source\": \"email\", \"confidence\": 0.95 },\n  { \"task\": \"Schedule a meeting with the design team\", \"dueDate\": null, \"source\": \"email\", \"confidence\": 0.85 }\n]\`\`\`\n\nEmail body:\n\`\`\`\n${emailBody}\`\`\`
+  try {
+    const prompt = `You are an intelligent assistant that reads email messages and extracts actionable tasks for the user.\n\nInstructions:\n- Carefully read the email body below.\n- Identify any requests, assignments, deadlines, or follow-up actions that the user is expected to do.\n- Ignore greetings, signatures, and non-actionable information.\n- If there are multiple tasks, list each one separately.\n- If there are no actionable tasks, return an empty list.\n\nOutput format:\nRespond with a JSON array of objects, each with these fields:\n- \"task\": A concise description of the action required (max 120 characters).\n- \"dueDate\": The due date if mentioned, otherwise null.\n- \"source\": \"email\"\n- \"confidence\": A number from 0 to 1 indicating your confidence this is a real to-do.\n\nExample output:\n\`\`\`json\n[\n  { \"task\": \"Send the signed contract to John\", \"dueDate\": \"2024-07-01\", \"source\": \"email\", \"confidence\": 0.95 },\n  { \"task\": \"Schedule a meeting with the design team\", \"dueDate\": null, \"source\": \"email\", \"confidence\": 0.85 }\n]\`\`\`\n\nEmail body:\n\`\`\`\n${emailBody}\`\`\`
 `;
 
-  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=' + apiKey, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3 },
-    }),
-  });
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  if (!text) return [];
-  try {
-    let jsonText = text.trim();
-    if (jsonText.startsWith('```json')) {
-      jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=' + apiKey, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3 },
+      }),
+    });
+    
+    if (!res.ok) {
+      console.error('❌ Gemini API request failed:', res.status, res.statusText);
+      return [];
     }
-    const todos = JSON.parse(jsonText);
-    if (Array.isArray(todos)) return todos;
-    return [];
-  } catch (err) {
-    console.error('Failed to parse Gemini todos response as JSON:', text, err);
+    
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!text) return [];
+    
+    try {
+      let jsonText = text.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      const todos = JSON.parse(jsonText);
+      if (Array.isArray(todos)) return todos;
+      return [];
+    } catch (err) {
+      console.error('Failed to parse Gemini todos response as JSON:', text, err);
+      return [];
+    }
+  } catch (error) {
+    console.error('❌ Error calling Gemini API:', error);
     return [];
   }
 }
@@ -189,10 +210,16 @@ export async function callGeminiAPI(message: string): Promise<{ action: string, 
     return { action: 'help', params: {} };
   }
   // Fallback: try to extract a to-do using Gemini
-  const todos = await extractEmailTodos(message);
-  if (todos && todos.length > 0) {
-    const todo = todos[0];
-    return { action: 'add_todo', params: { task: todo.task, dueDate: todo.dueDate } };
+  try {
+    const todos = await extractEmailTodos(message);
+    if (todos && todos.length > 0) {
+      const todo = todos[0];
+      return { action: 'add_todo', params: { task: todo.task, dueDate: todo.dueDate } };
+    }
+  } catch (error) {
+    console.error('❌ Error calling Gemini API for todo extraction:', error);
+    // Return a fallback response instead of throwing
+    return { action: 'unknown', params: {} };
   }
   return { action: 'unknown', params: {} };
 } 

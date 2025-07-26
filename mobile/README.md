@@ -1,159 +1,138 @@
-# Digipod Mobile App
+# Digipod Mobile - iOS App
 
-A React Native companion app for Digipod, your AI-powered productivity platform.
+A native iOS application built with SwiftUI for the Digipod platform.
 
 ## Features
 
-- **Authentication**: Google Sign-In integration
-- **Dashboard**: Overview of tasks, projects, and AI activity
-- **Tasks**: View and filter all tasks (AI-extracted and Co-Pilot added)
-- **Co-Pilot**: Chat interface with your AI assistant
-- **Real-time Updates**: Pull-to-refresh and live data sync
+### Tab Navigation
+The app features 5 main tabs:
 
-## Tech Stack
+1. **Home** - Dashboard with stats, recent activity, and overview
+2. **Projects** - View and manage your projects with progress tracking
+3. **Pip** - AI assistant chat interface
+4. **Notes** - Create and manage notes
+5. **Settings** - App preferences and account management
 
-- **React Native** with Expo
-- **TypeScript** for type safety
-- **React Navigation** for routing
-- **Firebase** for authentication and backend
-- **Expo Vector Icons** for UI icons
+### Design
+- Dark theme with Digipod branding colors
+- Native iOS design patterns
+- SF Symbols for consistent iconography
+- Smooth animations and transitions
 
-## Setup
+## Technical Stack
 
-### Prerequisites
-
-- Node.js (v18+)
-- Expo CLI: `npm install -g @expo/cli`
-- iOS Simulator (for iOS development)
-- Android Studio (for Android development)
-
-### Installation
-
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Start the development server:**
-   ```bash
-   npm start
-   ```
-
-3. **Run on iOS:**
-   ```bash
-   npm run ios
-   ```
-
-4. **Run on Android:**
-   ```bash
-   npm run android
-   ```
+- **Framework**: SwiftUI
+- **Language**: Swift
+- **Target**: iOS 17.0+
+- **Architecture**: MVVM with SwiftUI
+- **Navigation**: TabView with NavigationView
 
 ## Project Structure
 
 ```
-mobile/
-├── src/
-│   ├── screens/
-│   │   ├── LoginScreen.tsx      # Authentication screen
-│   │   ├── DashboardScreen.tsx  # Main dashboard
-│   │   ├── TasksScreen.tsx      # Task management
-│   │   └── CoPilotScreen.tsx    # AI chat interface
-│   ├── components/              # Reusable components
-│   └── lib/                     # Utilities and helpers
-├── App.tsx                      # Main app component
-└── package.json
+DigipodMobile/
+├── DigipodMobileApp.swift      # App entry point
+├── ContentView.swift           # Main tab navigation
+├── Assets.xcassets/           # App icons and colors
+└── Preview Content/           # SwiftUI previews
 ```
 
-## API Integration
+## Getting Started
 
-The mobile app connects to the same backend as the web app:
+### Prerequisites
+- Xcode 15.0 or later
+- iOS 17.0+ deployment target
+- macOS 14.0+ for development
 
-- **Authentication**: Firebase Auth
-- **Tasks**: `/api/client-todos`
-- **Co-Pilot**: `/api/copilot`
-- **Dashboard**: `/api/dashboard/summary`
+### Installation
+1. Open `DigipodMobile.xcodeproj` in Xcode
+2. Select your development team in project settings
+3. Build and run on simulator or device
 
-## Development
+### Development
+- The app uses SwiftUI's declarative syntax
+- All views are built with native iOS components
+- Dark mode is enforced throughout the app
+- Tab navigation uses SF Symbols for icons
 
-### Adding New Screens
+## Features in Detail
 
-1. Create a new screen in `src/screens/`
-2. Add the screen to `App.tsx` navigation
-3. Update the `RootStackParamList` type
+### Home Tab
+- Welcome message with user personalization
+- Statistics cards showing key metrics
+- Recent activity feed
+- Quick access to important actions
 
-### Styling
+### Projects Tab
+- List of all user projects
+- Project status indicators (Active/Pending)
+- Progress bars for project completion
+- Project management capabilities
 
-The app uses a dark theme with:
-- Background: `#111827`
-- Cards: `#1F2937`
-- Primary: `#3B82F6`
-- Success: `#10B981`
+### Pip Tab
+- Chat interface with AI assistant
+- Message bubbles with user/AI distinction
+- Real-time message sending
+- Conversation history
 
-### State Management
+### Notes Tab
+- List of user notes
+- Note preview with title and content
+- Date stamps for organization
+- Quick note creation
 
-- Local state with React hooks
-- Firebase for authentication
-- API calls for data fetching
+### Settings Tab
+- App preferences (notifications, dark mode)
+- Account management
+- API key configuration
+- Support and help resources
 
-## Building for Production
+## Design System
 
-### iOS
+### Colors
+- **Primary**: Digipod Yellow (#FFD600)
+- **Background**: Black (#000000)
+- **Text**: White (#FFFFFF)
+- **Secondary Text**: Gray (#9CA3AF)
 
-1. **Build the app:**
-   ```bash
-   eas build --platform ios
-   ```
+### Typography
+- **Headlines**: Large title, bold
+- **Body**: Regular, medium weight
+- **Captions**: Small, light weight
 
-2. **Submit to App Store:**
-   ```bash
-   eas submit --platform ios
-   ```
+### Icons
+- SF Symbols for consistency
+- Custom colors applied to match brand
+- Appropriate sizing for touch targets
 
-### Android
+## Future Enhancements
 
-1. **Build the app:**
-   ```bash
-   eas build --platform android
-   ```
+- Firebase integration for authentication
+- Real-time data synchronization
+- Push notifications
+- Offline support
+- Advanced project management features
+- Enhanced AI assistant capabilities
 
-2. **Submit to Play Store:**
-   ```bash
-   eas submit --platform android
-   ```
+## Testing
 
-## Troubleshooting
+The app includes SwiftUI previews for rapid development and testing. Use Xcode's preview canvas to see changes in real-time.
 
-### Common Issues
+## Deployment
 
-1. **Metro bundler issues:**
-   ```bash
-   npx expo start --clear
-   ```
-
-2. **iOS Simulator not working:**
-   ```bash
-   xcrun simctl boot "iPhone 15"
-   ```
-
-3. **Android emulator issues:**
-   - Open Android Studio
-   - Start AVD Manager
-   - Launch an emulator
-
-### Debugging
-
-- Use React Native Debugger
-- Enable remote debugging in simulator
-- Check Metro bundler logs
+1. Configure code signing in Xcode
+2. Set up App Store Connect for distribution
+3. Archive and upload to App Store
+4. Configure TestFlight for beta testing
 
 ## Contributing
 
-1. Follow the existing code style
-2. Add TypeScript types for new features
-3. Test on both iOS and Android
-4. Update this README for new features
+1. Follow SwiftUI best practices
+2. Maintain consistent code style
+3. Add previews for new views
+4. Test on multiple device sizes
+5. Ensure accessibility compliance
 
 ## License
 
-Same as the main Digipod project. 
+This project is part of the Digipod platform and follows the same licensing terms. 

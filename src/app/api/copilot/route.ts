@@ -5,25 +5,28 @@ import { db } from '@/lib/firebaseAdmin';
 
 // Placeholder: implement your own logic for these
 async function addTodoForUser(task: string, token: string, dueDate?: string | null, projectId?: string, projectName?: string) {
-  // Always use an absolute URL for fetch
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const body: Record<string, unknown> = { task };
-  if (dueDate) body.dueDate = dueDate;
-  // Always include projectId and projectName for dashboard grouping
-  body.projectId = projectId || 'general';
-  body.projectName = projectName || 'General';
-  const res = await fetch(`${baseUrl}/api/todos`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(body)
-  });
-  if (res.ok) {
+  // Get user ID from token
+  const userId = await getUserIdFromRequest({ headers: new Headers({ 'authorization': `Bearer ${token}` }) } as NextRequest);
+  if (!userId) {
+    return { reply: 'Failed to add to-do: authentication error.' };
+  }
+  
+  try {
+    // Add todo directly to database
+    await db.collection('todos').add({
+      userId,
+      task,
+      dueDate: dueDate || null,
+      projectId: projectId || 'general',
+      projectName: projectName || 'General',
+      createdAt: new Date(),
+      status: 'pending'
+    });
+    
     return { reply: `Added to-do: "${task}"${dueDate ? ` (Due: ${dueDate})` : ''}` };
-  } else {
-    return { reply: 'Failed to add to-do.' };
+  } catch (error) {
+    console.error('Error adding todo:', error);
+    return { reply: 'Failed to add to-do due to database error.' };
   }
 }
 async function getMetricsForUser() {
@@ -126,14 +129,27 @@ async function showPaymentsForUser(userId: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const userId = await getUserIdFromRequest(req);
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const userId = await getUserIdFromRequest(req);
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { message } = await req.json();
-  if (!message) return NextResponse.json({ error: 'Missing message' }, { status: 400 });
+    const { message } = await req.json();
+    if (!message) return NextResponse.json({ error: 'Missing message' }, { status: 400 });
+
+    console.log('🔍 Processing Copilot message:', message);
+    console.log('🔍 User ID:', userId);
 
   // 1. Call Gemini API to extract intent
-  const geminiRes = await callGeminiAPI(message);
+  let geminiRes;
+  try {
+    geminiRes = await callGeminiAPI(message);
+    console.log('🔍 Gemini response:', geminiRes);
+  } catch (error) {
+    console.error('❌ Error calling Gemini API:', error);
+    return NextResponse.json({ 
+      reply: 'Sorry, I encountered an error processing your request. Please try again.'
+    }, { status: 500 });
+  }
 
   // 2. Route to the correct internal API
   let result;
@@ -190,5 +206,13 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. Return a chat-friendly response
-  return NextResponse.json({ reply: result.reply || 'Done!' });
+  return NextResponse.json({ 
+    reply: result.reply || 'Done!'
+  });
+  } catch (error) {
+    console.error('Error in Copilot API:', error);
+    return NextResponse.json({ 
+      reply: 'Sorry, I encountered an error processing your request.'
+    }, { status: 500 });
+  }
 } 
