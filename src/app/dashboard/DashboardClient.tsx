@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -16,6 +16,7 @@ import { enUS } from 'date-fns/locale/en-US';
 import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import { incrementMinutesSaved } from '../../lib/hustleMeter';
 // Restore this import:
+import generatePDF from 'react-to-pdf';
 import { SparklesIcon } from '@heroicons/react/24/solid';
 
 console.log('Firebase config (dashboard):', auth.app.options);
@@ -303,6 +304,7 @@ function ExpandableCard({ expanded, onClick, title, icon, summary, content, load
   );
 }
 
+
 const fetchTodosWithAuth = async (url: string) => {
   // Wait for Firebase Auth to be ready and user to be logged in
   if (!auth.currentUser) return [];
@@ -314,6 +316,7 @@ const fetchTodosWithAuth = async (url: string) => {
 };
 
 export default function DashboardClient() {
+  const pdfRef = useRef(null);
   const [toast, setToast] = useState<string | null>(null);
   const [minutesSaved, setMinutesSaved] = useState(0);
   const [authChecking, setAuthChecking] = useState(true);
@@ -944,7 +947,6 @@ export default function DashboardClient() {
     getDay,
     locales,
   });
-
   return (
     <main className="flex-1 flex flex-col min-h-screen bg-gradient-to-r from-gray-900 to-gray-900 relative overflow-x-hidden">
       {/* Animated shimmer overlay */}
@@ -993,6 +995,12 @@ export default function DashboardClient() {
       {/* Create a New Project Button - inside dashboard, above cards */}
       <div className="w-full flex justify-end px-20 mb-4">
         <button
+          onClick={() => generatePDF(pdfRef, {filename: 'page.pdf'})}
+          className="px-5 py-2 bg-blue-700 mr-2 text-white font-bold rounded-xl hover:scale-105 transition flex items-center gap-2"
+        >
+          <span className="text-lg">+</span> Download Analytics
+        </button>
+        <button
           onClick={() => setShowCreateModal(true)}
           className="px-5 py-2 bg-white text-black font-bold rounded-xl hover:scale-105 transition flex items-center gap-2"
         >
@@ -1038,7 +1046,7 @@ export default function DashboardClient() {
                     <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '70%' }}></div>
                   </div>
                 ) : (
-                  <div className="text-blue-100 text-base mt-2 " >
+                  <div className="text-blue-100 text-base mt-2 " ref={pdfRef}>
                     <p className="mb-4 w-full">{aiSummary || 'No AI changes detected.'}</p>
                     {summaryData && typeof summaryData === 'object' && 'summary' in summaryData && (
                       <div className="bg-blue-900/20 rounded-lg p-4 space-y-2">

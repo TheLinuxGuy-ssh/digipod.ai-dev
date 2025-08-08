@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import useSWR from 'swr';
 import type { User } from 'firebase/auth';
+import { usePDF } from 'react-to-pdf';
 
 interface EmailSetting {
   id: string;
