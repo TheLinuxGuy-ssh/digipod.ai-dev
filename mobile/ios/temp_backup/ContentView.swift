@@ -11,7 +11,7 @@ import UserNotifications
 
 
 struct ContentView: View {
-    @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var notificationService = PushNotificationService.shared
     
     var body: some View {
@@ -49,7 +49,7 @@ struct LoadingView: View {
 
 // MARK: - Authentication View
 struct AuthView: View {
-    @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var authViewModel = AuthViewModel()
     @State private var isSignUp = false
     
     var body: some View {
@@ -137,7 +137,6 @@ struct AuthView: View {
             .background(Color.black)
             .navigationBarHidden(true)
         }
-        .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 
@@ -151,7 +150,6 @@ struct MainTabView: View {
                     Text("Home")
                 }
             NavigationView { ProjectsTabView() }
-                .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("Projects", systemImage: "folder") }
             
             PipTabView()
@@ -193,24 +191,6 @@ class AuthViewModel: ObservableObject {
             DispatchQueue.main.async {
                 self?.isAuthenticated = (user != nil)
                 self?.isLoading = false
-                
-                // When user becomes authenticated, register push token if available
-                if user != nil {
-                    self?.registerPushTokenIfAvailable()
-                }
-            }
-        }
-    }
-    
-    private func registerPushTokenIfAvailable() {
-        guard let token = PushNotificationService.shared.deviceToken else { return }
-        Task {
-            do {
-                let success = try await APIService().registerDeviceToken(token)
-                if success { print("✅ Push token registered after login") }
-                else { print("❌ Failed to register push token after login") }
-            } catch {
-                print("❌ Error registering push token after login: \(error)")
             }
         }
     }
@@ -234,7 +214,6 @@ class AuthViewModel: ObservableObject {
                     self?.error = error.localizedDescription
                 } else {
                     print("Sign in successful!")
-                    self?.registerPushTokenIfAvailable()
                 }
             }
         }
@@ -255,7 +234,6 @@ class AuthViewModel: ObservableObject {
                     print("Sign up successful! User: \(user.email ?? "unknown")")
                     // Save user data to Firestore (similar to web app)
                     self?.saveUserData(user: user)
-                    self?.registerPushTokenIfAvailable()
                 }
             }
         }
@@ -474,7 +452,6 @@ struct HomeView: View {
             .navigationTitle("Home")
             .navigationBarHidden(true)
         }
-        .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingWhatsChangedDetail) {
             WhatsChangedDetailView()
         }
@@ -861,7 +838,6 @@ struct PipTabView: View {
             }
             .navigationBarHidden(true)
         }
-        .navigationViewStyle(StackNavigationViewStyle())
     }
     
     private let quickPrompts = [
@@ -1233,7 +1209,7 @@ class NotesViewModel: ObservableObject {
 
 // MARK: - Settings View
 struct SettingsView: View {
-    @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var apiService = APIService()
     @State private var notificationsEnabled = true
     @State private var darkModeEnabled = true
@@ -1482,7 +1458,6 @@ struct SettingsView: View {
                 loadUserData()
             }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
     }
     
     private var avatarInitial: String {

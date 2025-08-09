@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '@/lib/getUserFromRequest';
-import { db } from '@/lib/firebaseAdmin';
+import { registerDeviceTokenForUser } from '@/lib/pushNotifications';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -20,13 +20,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Device token is required' }, { status: 400 });
     }
 
-    // Store device token in Firestore
-    await db.collection('deviceTokens').doc(userId).set({
-      deviceToken,
-      userId,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }, { merge: true });
+    await registerDeviceTokenForUser(userId, deviceToken);
 
     console.log(`✅ Device token registered for user ${userId}`);
     
