@@ -39,22 +39,9 @@
 		A4297B802E34D6CE006118E6 /* digipodUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = digipodUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		A4A74EA12E4709A60049BFF3 /* Exceptions for "digipod" folder in "digipod" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = A4297B682E34D6CC006118E6 /* digipod */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A4297B6B2E34D6CC006118E6 /* digipod */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				A4A74EA12E4709A60049BFF3 /* Exceptions for "digipod" folder in "digipod" target */,
-			);
 			path = digipod;
 			sourceTree = "<group>";
 		};
