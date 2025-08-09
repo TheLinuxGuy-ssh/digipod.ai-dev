@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '@/lib/getUserFromRequest';
 import { callGeminiAPI } from '@/lib/gemini';
 import { db } from '@/lib/firebaseAdmin';
+import { sendPushToUser } from '@/lib/pushNotifications';
 
 // Placeholder: implement your own logic for these
 async function addTodoForUser(task: string, token: string, dueDate?: string | null, projectId?: string, projectName?: string) {
@@ -139,76 +140,91 @@ export async function POST(req: NextRequest) {
     console.log('🔍 Processing Copilot message:', message);
     console.log('🔍 User ID:', userId);
 
-  // 1. Call Gemini API to extract intent
-  let geminiRes;
-  try {
-    geminiRes = await callGeminiAPI(message);
-    console.log('🔍 Gemini response:', geminiRes);
-  } catch (error) {
-    console.error('❌ Error calling Gemini API:', error);
+    // 1. Call Gemini API to extract intent
+    let geminiRes;
+    try {
+      geminiRes = await callGeminiAPI(message);
+      console.log('🔍 Gemini response:', geminiRes);
+    } catch (error) {
+      console.error('❌ Error calling Gemini API:', error);
+      return NextResponse.json({ 
+        reply: 'Sorry, I encountered an error processing your request. Please try again.'
+      }, { status: 500 });
+    }
+
+    // 2. Route to the correct internal API
+    let result;
+    let push: { title: string; body: string; data?: Record<string,string> } | null = null;
+    switch (geminiRes.action) {
+      case 'add_todo': {
+        const authHeader = req.headers.get('authorization');
+        const token = authHeader ? authHeader.replace('Bearer ', '') : '';
+        result = await addTodoForUser(
+          geminiRes.params.task as string,
+          token,
+          geminiRes.params.dueDate as string | undefined,
+          geminiRes.params.projectId as string | undefined,
+          geminiRes.params.projectName as string | undefined
+        );
+        push = {
+          title: 'To-do added',
+          body: geminiRes.params.task as string,
+          data: { changeType: 'new_todo', projectId: (geminiRes.params.projectId as string) || 'general' }
+        };
+        break;
+      }
+      case 'list_todos':
+        result = await listTodosForUser(userId);
+        break;
+      case 'create_project':
+        result = await createProjectForUser(userId, geminiRes.params.name as string);
+        push = { title: 'Project created', body: geminiRes.params.name as string, data: { changeType: 'ai_activity' } };
+        break;
+      case 'list_projects':
+        result = await listProjectsForUser(userId);
+        break;
+      case 'get_project_status':
+        result = await getProjectStatusForUser(userId, geminiRes.params.name as string);
+        break;
+      case 'advance_phase':
+        result = await advanceProjectPhaseForUser(userId, geminiRes.params.name as string);
+        push = { title: 'Project phase advanced', body: geminiRes.params.name as string, data: { changeType: 'phase_advance' } };
+        break;
+      case 'list_ai_drafts':
+        result = await listAIDraftsForUser(userId);
+        break;
+      case 'approve_ai_draft':
+        result = await approveAIDraftForUser();
+        break;
+      case 'list_clients':
+        result = await listClientsForUser(userId);
+        break;
+      case 'add_client_filter':
+        result = await addClientFilterForUser(userId, geminiRes.params.email as string);
+        push = { title: 'Client filter added', body: geminiRes.params.email as string, data: { changeType: 'ai_activity' } };
+        break;
+      case 'show_payments':
+        result = await showPaymentsForUser(userId);
+        break;
+      case 'get_metrics':
+        result = await getMetricsForUser();
+        break;
+      case 'help':
+        result = { reply: "I can help you add to-dos, fetch project statuses, get metrics, and more! Try asking: 'Add a to-do', 'Show my project status', or 'Get my metrics'." };
+        break;
+      default:
+        result = { reply: "Sorry, I didn't understand that yet." };
+    }
+
+    // 2.5 Send push for impactful actions
+    if (push) {
+      await sendPushToUser({ userId, title: push.title, body: push.body, data: push.data, silent: false });
+    }
+
+    // 3. Return a chat-friendly response
     return NextResponse.json({ 
-      reply: 'Sorry, I encountered an error processing your request. Please try again.'
-    }, { status: 500 });
-  }
-
-  // 2. Route to the correct internal API
-  let result;
-  switch (geminiRes.action) {
-    case 'add_todo':
-      const authHeader = req.headers.get('authorization');
-      const token = authHeader ? authHeader.replace('Bearer ', '') : '';
-      result = await addTodoForUser(
-        geminiRes.params.task as string,
-        token,
-        geminiRes.params.dueDate as string | undefined,
-        geminiRes.params.projectId as string | undefined,
-        geminiRes.params.projectName as string | undefined
-      );
-      break;
-    case 'list_todos':
-      result = await listTodosForUser(userId);
-      break;
-    case 'create_project':
-      result = await createProjectForUser(userId, geminiRes.params.name as string);
-      break;
-    case 'list_projects':
-      result = await listProjectsForUser(userId);
-      break;
-    case 'get_project_status':
-      result = await getProjectStatusForUser(userId, geminiRes.params.name as string);
-      break;
-    case 'advance_phase':
-      result = await advanceProjectPhaseForUser(userId, geminiRes.params.name as string);
-      break;
-    case 'list_ai_drafts':
-      result = await listAIDraftsForUser(userId);
-      break;
-    case 'approve_ai_draft':
-      result = await approveAIDraftForUser();
-      break;
-    case 'list_clients':
-      result = await listClientsForUser(userId);
-      break;
-    case 'add_client_filter':
-      result = await addClientFilterForUser(userId, geminiRes.params.email as string);
-      break;
-    case 'show_payments':
-      result = await showPaymentsForUser(userId);
-      break;
-    case 'get_metrics':
-      result = await getMetricsForUser();
-      break;
-    case 'help':
-      result = { reply: "I can help you add to-dos, fetch project statuses, get metrics, and more! Try asking: 'Add a to-do', 'Show my project status', or 'Get my metrics'." };
-      break;
-    default:
-      result = { reply: "Sorry, I didn't understand that yet." };
-  }
-
-  // 3. Return a chat-friendly response
-  return NextResponse.json({ 
-    reply: result.reply || 'Done!'
-  });
+      reply: result.reply || 'Done!'
+    });
   } catch (error) {
     console.error('Error in Copilot API:', error);
     return NextResponse.json({ 
