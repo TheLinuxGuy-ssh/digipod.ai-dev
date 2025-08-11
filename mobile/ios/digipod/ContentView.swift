@@ -178,6 +178,8 @@ struct MainTabView: View {
 }
 
 // MARK: - Auth View Model
+struct Session: Codable { let uid: String; let email: String?; let displayName: String?; let photoURL: String? }
+
 class AuthViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
@@ -189,14 +191,35 @@ class AuthViewModel: ObservableObject {
     private var authStateListener: AuthStateDidChangeListenerHandle?
     
     init() {
+        // Fast path: use persisted Firebase session immediately
+        let cachedUser = Auth.auth().currentUser
+        self.isAuthenticated = (cachedUser != nil)
+        self.isLoading = false
+        
+        // Hydrate from lightweight session cache for instant UI
+        if let data = UserDefaults.standard.data(forKey: "cachedSession"),
+           let session = try? JSONDecoder().decode(Session.self, from: data) {
+            // Optionally use cached session details (e.g., display name)
+            print("ℹ️ Loaded cached session for uid: \(session.uid)")
+        }
+        
+        // Listen for auth changes to reconcile and persist session
         authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             DispatchQueue.main.async {
                 self?.isAuthenticated = (user != nil)
                 self?.isLoading = false
                 
-                // When user becomes authenticated, register push token if available
-                if user != nil {
+                // Persist lightweight session cache
+                if let user = user {
+                    let session = Session(uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL?.absoluteString)
+                    if let encoded = try? JSONEncoder().encode(session) {
+                        UserDefaults.standard.set(encoded, forKey: "cachedSession")
+                    }
+                    
+                    // Register push token if available
                     self?.registerPushTokenIfAvailable()
+                } else {
+                    UserDefaults.standard.removeObject(forKey: "cachedSession")
                 }
             }
         }

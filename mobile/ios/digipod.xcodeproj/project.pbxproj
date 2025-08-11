@@ -39,9 +39,22 @@
 		A4297B802E34D6CE006118E6 /* digipodUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = digipodUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A4A74EB22E47CA410049BFF3 /* Exceptions for "digipod" folder in "digipod" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A4297B682E34D6CC006118E6 /* digipod */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A4297B6B2E34D6CC006118E6 /* digipod */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A4A74EB22E47CA410049BFF3 /* Exceptions for "digipod" folder in "digipod" target */,
+			);
 			path = digipod;
 			sourceTree = "<group>";
 		};
@@ -189,6 +202,11 @@
 				TargetAttributes = {
 					A4297B682E34D6CC006118E6 = {
 						CreatedOnToolsVersion = 16.3;
+						systemCapabilities = {
+							com.apple.Push = {
+								enabled = 1;
+							};
+						};
 					};
 					A4297B752E34D6CE006118E6 = {
 						CreatedOnToolsVersion = 16.3;
@@ -412,11 +430,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = digipod/digipod.dev.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3FKTLL5XPW;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = digipod/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Digipod;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -442,11 +461,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = digipod/digipod.prod.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3FKTLL5XPW;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = digipod/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Digipod;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

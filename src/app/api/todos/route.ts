@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import { getUserIdFromRequest } from '@/lib/getUserFromRequest';
+import { sendPushToUser } from '@/lib/pushNotifications';
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +21,21 @@ export async function POST(req: NextRequest) {
       createdAt: new Date(),
       status: 'pending'
     });
+
+    // Fire a push notification to the user for the new todo
+    await sendPushToUser({
+      userId,
+      title: 'New to-do added',
+      body: task,
+      data: {
+        changeType: 'new_todo',
+        projectId: projectId || '',
+        projectName: projectName || '',
+        description: task,
+      },
+      silent: false,
+    });
+
     return NextResponse.json({ success: true, id: docRef.id });
   } catch (err) {
     console.error('Error in /api/todos POST:', err);

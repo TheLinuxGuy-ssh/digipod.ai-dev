@@ -34,8 +34,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             if let error = error { print("❌ Notification permission error: \(error)") }
         }
         
-        // Try fetching FCM token on launch
-        fetchAndRegisterFCMToken()
+        // Do NOT fetch FCM token here; wait until APNs token is set in didRegisterForRemoteNotifications
         
         return true
     }
@@ -49,7 +48,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Provide APNs token to FCM so it can map to FCM token
         Messaging.messaging().apnsToken = deviceToken
         
-        // FCM token will be delivered via delegate or can be fetched explicitly
+        // Now that APNs token is set, fetch FCM token
         fetchAndRegisterFCMToken()
     }
     
@@ -58,6 +57,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
     
     private func fetchAndRegisterFCMToken() {
+        guard Messaging.messaging().apnsToken != nil else {
+            print("ℹ️ Skipping FCM token fetch until APNs token is available")
+            return
+        }
         Messaging.messaging().token { token, error in
             if let error = error {
                 print("❌ Error fetching FCM registration token: \(error)")

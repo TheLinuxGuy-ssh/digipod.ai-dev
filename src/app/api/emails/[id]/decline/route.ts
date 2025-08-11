@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import { getUserIdFromRequest } from '@/lib/getUserFromRequest';
+import { sendPushToUser } from '@/lib/pushNotifications';
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const userId = await getUserIdFromRequest(req);
@@ -21,6 +22,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           await draftRef.update({ 
             status: 'declined',
             declinedAt: new Date().toISOString()
+          });
+          
+          // Push: AI draft declined
+          await sendPushToUser({
+            userId,
+            title: 'AI draft declined',
+            body: draft.subject || 'Draft declined',
+            data: { changeType: 'ai_activity', description: 'AI draft declined' },
+            silent: false,
           });
           
           return NextResponse.json({ success: true });

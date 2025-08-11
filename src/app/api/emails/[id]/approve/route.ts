@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import { getUserIdFromRequest } from '@/lib/getUserFromRequest';
 import { sendEmailReply } from '@/lib/gmail';
+import { sendPushToUser } from '@/lib/pushNotifications';
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const userId = await getUserIdFromRequest(req);
@@ -44,6 +45,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             status: 'approved',
             approvedAt: new Date().toISOString(),
             sentAt: new Date().toISOString()
+          });
+          
+          // Push: AI draft approved and sent
+          await sendPushToUser({
+            userId,
+            title: 'AI reply sent',
+            body: emailSubject,
+            data: { changeType: 'ai_activity', description: 'AI draft approved and sent' },
+            silent: false,
           });
           
           return NextResponse.json({ success: true });

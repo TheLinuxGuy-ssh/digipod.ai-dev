@@ -63,6 +63,7 @@ export async function sendPushToUser(opts: PushOptions): Promise<string | null> 
         headers: {
           'apns-push-type': isSilent ? 'background' : 'alert',
           'apns-priority': isSilent ? '5' : '10',
+          'apns-topic': 'com.kashish.digipod.digipod',
         },
         payload: {
           aps: (isSilent ? { 'content-available': 1 } : { sound: 'default' }) as ApsPayload,
@@ -78,10 +79,12 @@ export async function sendPushToUser(opts: PushOptions): Promise<string | null> 
     const invalid: string[] = [];
     resp.responses.forEach((r, idx) => {
       if (!r.success) {
-        const err = r.error as unknown;
-        const code = (typeof err === 'object' && err && 'code' in err) ? (err as { code?: string }).code : undefined;
+        const tok = allTokens[idx];
+        const code = (r.error && (r.error as unknown as { code?: string }).code) || 'unknown';
+        const message = r.error?.message || 'unknown error';
+        console.error(`[push] Failure for token ${tok.slice(0, 16)}… code=${code} message=${message}`);
         if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token') {
-          invalid.push(allTokens[idx]);
+          invalid.push(tok);
         }
       }
     });
