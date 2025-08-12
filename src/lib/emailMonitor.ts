@@ -152,13 +152,26 @@ class EmailMonitorService {
     oauth2Client.setCredentials(tokens);
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    // Get client email filters for this user
-    const clientFiltersSnap = await db.collection('clientEmailFilters')
+    // Automatically get all client emails from user's projects
+    const projectsSnap = await db.collection('projects')
       .where('userId', '==', settings.userId)
-      .where('isActive', '==', true)
       .get();
 
-    const clientFilters = clientFiltersSnap.docs.map(doc => doc.data() as ClientEmailFilter);
+    const clientEmails = new Set<string>();
+    const projectMap = new Map<string, { id: string; name: string }>();
+
+    projectsSnap.docs.forEach(doc => {
+      const project = doc.data();
+      if (project.clientEmail) {
+        clientEmails.add(project.clientEmail.toLowerCase());
+        projectMap.set(project.clientEmail.toLowerCase(), {
+          id: doc.id,
+          name: project.name || 'Project'
+        });
+      }
+    });
+
+    console.log(`[emailMonitor] Monitoring ${clientEmails.size} client emails for user ${settings.userId}`);
 
     // Fetch recent emails (last 50)
     const res = await gmail.users.messages.list({
@@ -187,9 +200,11 @@ class EmailMonitorService {
           ? Buffer.from(bodyPart.body.data || '', 'base64').toString('utf-8')
           : '';
 
-        // Check if this email is from a client we're monitoring
-        const matchingFilter = this.findMatchingClientFilter(from, clientFilters);
-        if (!matchingFilter) {
+        // Check if this email is from any of our monitored client emails
+        const senderEmail = this.extractEmailFromString(from);
+        const matchingProject = projectMap.get(senderEmail.toLowerCase());
+        
+        if (!matchingProject) {
           continue; // Skip emails not from monitored clients
         }
 
@@ -206,7 +221,7 @@ class EmailMonitorService {
           subject,
           body,
           date: new Date(date),
-          projectId: matchingFilter.projectId
+          projectId: matchingProject.id
         });
 
       } catch (error) {
@@ -232,13 +247,26 @@ class EmailMonitorService {
       await client.connect();
       const lock = await client.getMailboxLock('INBOX');
 
-      // Get client email filters for this user
-      const clientFiltersSnap = await db.collection('clientEmailFilters')
+      // Automatically get all client emails from user's projects
+      const projectsSnap = await db.collection('projects')
         .where('userId', '==', settings.userId)
-        .where('isActive', '==', true)
         .get();
 
-      const clientFilters = clientFiltersSnap.docs.map(doc => doc.data() as ClientEmailFilter);
+      const clientEmails = new Set<string>();
+      const projectMap = new Map<string, { id: string; name: string }>();
+
+      projectsSnap.docs.forEach(doc => {
+        const project = doc.data();
+        if (project.clientEmail) {
+          clientEmails.add(project.clientEmail.toLowerCase());
+          projectMap.set(project.clientEmail.toLowerCase(), {
+            id: doc.id,
+            name: project.name || 'Project'
+          });
+        }
+      });
+
+      console.log(`[emailMonitor] Monitoring ${clientEmails.size} client emails for user ${settings.userId} (IMAP)`);
 
       // Fetch unread messages
       for await (const msg of client.fetch({
@@ -254,9 +282,11 @@ class EmailMonitorService {
           const subject = msg.envelope.subject || '';
           const body = msg.source?.toString() || '';
 
-          // Check if this email is from a client we're monitoring
-          const matchingFilter = this.findMatchingClientFilter(from, clientFilters);
-          if (!matchingFilter) {
+          // Check if this email is from any of our monitored client emails
+          const senderEmail = this.extractEmailFromString(from);
+          const matchingProject = projectMap.get(senderEmail.toLowerCase());
+          
+          if (!matchingProject) {
             continue;
           }
 
@@ -273,7 +303,7 @@ class EmailMonitorService {
             subject,
             body,
             date: msg.internalDate || new Date(),
-            projectId: matchingFilter.projectId
+            projectId: matchingProject.id
           });
 
         } catch (error) {
@@ -442,6 +472,13 @@ class EmailMonitorService {
       const settings = settingDoc.data() as EmailSettings;
       await this.checkUserEmails(settings);
     }
+  }
+
+  // Manual check for a specific user (for testing)
+  async checkUserEmailsNow(userId: string) {
+    console.log(`[emailMonitor] Manual email check requested for user ${userId}`);
+    await this.checkUserEmailsManually(userId);
+    console.log(`[emailMonitor] Manual email check completed for user ${userId}`);
   }
 
   async getProcessingStatus(userId: string) {
