@@ -15,9 +15,9 @@ import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale/en-US';
 import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import { incrementMinutesSaved } from '../../lib/hustleMeter';
-// Restore this import:
-import generatePDF from 'react-to-pdf';
 import { SparklesIcon } from '@heroicons/react/24/solid';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 console.log('Firebase config (dashboard):', auth.app.options);
 
@@ -316,7 +316,6 @@ const fetchTodosWithAuth = async (url: string) => {
 };
 
 export default function DashboardClient() {
-  const pdfRef = useRef(null);
   const [toast, setToast] = useState<string | null>(null);
   const [minutesSaved, setMinutesSaved] = useState(0);
   const [authChecking, setAuthChecking] = useState(true);
@@ -947,7 +946,31 @@ export default function DashboardClient() {
     getDay,
     locales,
   });
+const generatePdfFromHtml = async () => {
+  const input = document.getElementById('pdf-content');
+  if (!input) {
+    console.error("Element with id 'pdf-content' not found.");
+    return;
+  }
+
+  const canvas = await html2canvas(input);
+  const imgData = canvas.toDataURL('image/png');
+
+  const pdf = new jsPDF();
+
+  const imgProps = pdf.getImageProperties(imgData);
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+  pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+  pdf.save('report.pdf');
+};
+
   return (
+    <>
+      <div id="pdf-content" className='absolute px-2 top-[-9999px] left-[-9999px] w-[800px] h-full text-black'>
+        this is something!
+      </div>    
     <main className="flex-1 flex flex-col min-h-screen bg-gradient-to-r from-gray-900 to-gray-900 relative overflow-x-hidden">
       {/* Animated shimmer overlay */}
       <div className="pointer-events-none fixed inset-0 z-0 animate-shimmer bg-gradient-to-r from-transparent via-white/10" style={{ backgroundSize: '200% 100%' }} />
@@ -995,7 +1018,7 @@ export default function DashboardClient() {
       {/* Create a New Project Button - inside dashboard, above cards */}
       <div className="w-full flex justify-end px-20 mb-4">
         <button
-          onClick={() => generatePDF(pdfRef, {filename: 'page.pdf'})}
+          onClick={generatePdfFromHtml}
           className="px-5 py-2 bg-blue-700 mr-2 text-white font-bold rounded-xl hover:scale-105 transition flex items-center gap-2"
         >
           <span className="text-lg">+</span> Download Analytics
@@ -1046,7 +1069,7 @@ export default function DashboardClient() {
                     <div className="h-4 bg-blue-900/40 rounded animate-pulse" style={{ width: '70%' }}></div>
                   </div>
                 ) : (
-                  <div className="text-blue-100 text-base mt-2 " ref={pdfRef}>
+                  <div className="text-blue-100 text-base mt-2 ">
                     <p className="mb-4 w-full">{aiSummary || 'No AI changes detected.'}</p>
                     {summaryData && typeof summaryData === 'object' && 'summary' in summaryData && (
                       <div className="bg-blue-900/20 rounded-lg p-4 space-y-2">
@@ -1906,5 +1929,6 @@ export default function DashboardClient() {
         }
       `}</style>
     </main>
+    </>
   );
 } 
