@@ -3,6 +3,7 @@ import { google } from 'googleapis';
 import { ImapFlow } from 'imapflow';
 import { getGeminiReply, extractEmailTodos } from './gemini';
 import { decrypt } from './imapSmtp';
+import { sendPushToUser } from './pushNotifications';
 
 export interface EmailSettings {
   id: string;
@@ -375,6 +376,19 @@ class EmailMonitorService {
         createdAt: new Date()
       });
 
+      // Send push for new AI draft
+      await sendPushToUser({
+        userId,
+        title: 'New AI draft generated',
+        body: geminiRes.subject ? `Subject: ${geminiRes.subject}` : 'An AI reply draft is ready',
+        data: {
+          changeType: 'new_draft',
+          projectId: emailData.projectId || '',
+          description: geminiRes.subject || emailData.subject || 'AI draft',
+        },
+        silent: false,
+      });
+
       // Extract todos
       const todos = await extractEmailTodos(emailData.body);
       for (const todo of todos) {
@@ -386,6 +400,20 @@ class EmailMonitorService {
           source: 'email',
           confidence: todo.confidence,
           createdAt: new Date()
+        });
+      }
+
+      if (todos.length > 0) {
+        await sendPushToUser({
+          userId,
+          title: 'New to-do extracted',
+          body: todos.length === 1 ? todos[0].task : `${todos.length} new to-dos extracted from email`,
+          data: {
+            changeType: 'new_todo',
+            projectId: emailData.projectId || '',
+            description: todos.length === 1 ? todos[0].task : `${todos.length} todos`,
+          },
+          silent: false,
         });
       }
 

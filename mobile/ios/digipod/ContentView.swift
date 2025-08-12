@@ -11,7 +11,7 @@ import UserNotifications
 
 
 struct ContentView: View {
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var notificationService = PushNotificationService.shared
     
     var body: some View {
@@ -49,7 +49,7 @@ struct LoadingView: View {
 
 // MARK: - Authentication View
 struct AuthView: View {
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var isSignUp = false
     
     var body: some View {
@@ -137,6 +137,7 @@ struct AuthView: View {
             .background(Color.black)
             .navigationBarHidden(true)
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 
@@ -150,6 +151,7 @@ struct MainTabView: View {
                     Text("Home")
                 }
             NavigationView { ProjectsTabView() }
+                .navigationViewStyle(StackNavigationViewStyle())
                 .tabItem { Label("Projects", systemImage: "folder") }
             
             PipTabView()
@@ -176,6 +178,8 @@ struct MainTabView: View {
 }
 
 // MARK: - Auth View Model
+struct Session: Codable { let uid: String; let email: String?; let displayName: String?; let photoURL: String? }
+
 class AuthViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
@@ -187,10 +191,49 @@ class AuthViewModel: ObservableObject {
     private var authStateListener: AuthStateDidChangeListenerHandle?
     
     init() {
+        // Fast path: use persisted Firebase session immediately
+        let cachedUser = Auth.auth().currentUser
+        self.isAuthenticated = (cachedUser != nil)
+        self.isLoading = false
+        
+        // Hydrate from lightweight session cache for instant UI
+        if let data = UserDefaults.standard.data(forKey: "cachedSession"),
+           let session = try? JSONDecoder().decode(Session.self, from: data) {
+            // Optionally use cached session details (e.g., display name)
+            print("ℹ️ Loaded cached session for uid: \(session.uid)")
+        }
+        
+        // Listen for auth changes to reconcile and persist session
         authStateListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             DispatchQueue.main.async {
                 self?.isAuthenticated = (user != nil)
                 self?.isLoading = false
+                
+                // Persist lightweight session cache
+                if let user = user {
+                    let session = Session(uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL?.absoluteString)
+                    if let encoded = try? JSONEncoder().encode(session) {
+                        UserDefaults.standard.set(encoded, forKey: "cachedSession")
+                    }
+                    
+                    // Register push token if available
+                    self?.registerPushTokenIfAvailable()
+                } else {
+                    UserDefaults.standard.removeObject(forKey: "cachedSession")
+                }
+            }
+        }
+    }
+    
+    private func registerPushTokenIfAvailable() {
+        guard let token = PushNotificationService.shared.deviceToken else { return }
+        Task {
+            do {
+                let success = try await APIService().registerDeviceToken(token)
+                if success { print("✅ Push token registered after login") }
+                else { print("❌ Failed to register push token after login") }
+            } catch {
+                print("❌ Error registering push token after login: \(error)")
             }
         }
     }
@@ -214,6 +257,7 @@ class AuthViewModel: ObservableObject {
                     self?.error = error.localizedDescription
                 } else {
                     print("Sign in successful!")
+                    self?.registerPushTokenIfAvailable()
                 }
             }
         }
@@ -234,6 +278,7 @@ class AuthViewModel: ObservableObject {
                     print("Sign up successful! User: \(user.email ?? "unknown")")
                     // Save user data to Firestore (similar to web app)
                     self?.saveUserData(user: user)
+                    self?.registerPushTokenIfAvailable()
                 }
             }
         }
@@ -452,6 +497,7 @@ struct HomeView: View {
             .navigationTitle("Home")
             .navigationBarHidden(true)
         }
+        .navigationViewStyle(StackNavigationViewStyle())
         .sheet(isPresented: $showingWhatsChangedDetail) {
             WhatsChangedDetailView()
         }
@@ -838,6 +884,7 @@ struct PipTabView: View {
             }
             .navigationBarHidden(true)
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
     
     private let quickPrompts = [
@@ -1209,7 +1256,7 @@ class NotesViewModel: ObservableObject {
 
 // MARK: - Settings View
 struct SettingsView: View {
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var apiService = APIService()
     @State private var notificationsEnabled = true
     @State private var darkModeEnabled = true
@@ -1458,6 +1505,7 @@ struct SettingsView: View {
                 loadUserData()
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
     
     private var avatarInitial: String {

@@ -13,6 +13,7 @@
 		A4297BAB2E3504E4006118E6 /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = A4297BAA2E3504E4006118E6 /* FirebaseAnalyticsIdentitySupport */; };
 		A4297BAD2E3504E4006118E6 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = A4297BAC2E3504E4006118E6 /* FirebaseAppCheck */; };
 		A498C7B02E350D6C00152B9A /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A498C7AF2E350D6C00152B9A /* FirebaseAuth */; };
+		A4A74EA32E4759960049BFF3 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = A4A74EA22E4759960049BFF3 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,20 +39,23 @@
 		A4297B802E34D6CE006118E6 /* digipodUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = digipodUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A4A74EB22E47CA410049BFF3 /* Exceptions for "digipod" folder in "digipod" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A4297B682E34D6CC006118E6 /* digipod */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A4297B6B2E34D6CC006118E6 /* digipod */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A4A74EB22E47CA410049BFF3 /* Exceptions for "digipod" folder in "digipod" target */,
+			);
 			path = digipod;
-			sourceTree = "<group>";
-		};
-		A4297B792E34D6CE006118E6 /* digipodTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = digipodTests;
-			sourceTree = "<group>";
-		};
-		A4297B832E34D6CE006118E6 /* digipodUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = digipodUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -63,6 +67,7 @@
 			files = (
 				A4297BAB2E3504E4006118E6 /* FirebaseAnalyticsIdentitySupport in Frameworks */,
 				A498C7B02E350D6C00152B9A /* FirebaseAuth in Frameworks */,
+				A4A74EA32E4759960049BFF3 /* FirebaseMessaging in Frameworks */,
 				A4297BA72E3504E4006118E6 /* FirebaseAnalytics in Frameworks */,
 				A4297BA92E3504E4006118E6 /* FirebaseAnalyticsCore in Frameworks */,
 				A4297BAD2E3504E4006118E6 /* FirebaseAppCheck in Frameworks */,
@@ -91,8 +96,6 @@
 			isa = PBXGroup;
 			children = (
 				A4297B6B2E34D6CC006118E6 /* digipod */,
-				A4297B792E34D6CE006118E6 /* digipodTests */,
-				A4297B832E34D6CE006118E6 /* digipodUITests */,
 				A498C7AE2E350D6C00152B9A /* Frameworks */,
 				A4297B6A2E34D6CC006118E6 /* Products */,
 			);
@@ -141,6 +144,7 @@
 				A4297BAA2E3504E4006118E6 /* FirebaseAnalyticsIdentitySupport */,
 				A4297BAC2E3504E4006118E6 /* FirebaseAppCheck */,
 				A498C7AF2E350D6C00152B9A /* FirebaseAuth */,
+				A4A74EA22E4759960049BFF3 /* FirebaseMessaging */,
 			);
 			productName = digipod;
 			productReference = A4297B692E34D6CC006118E6 /* digipod.app */;
@@ -158,9 +162,6 @@
 			);
 			dependencies = (
 				A4297B782E34D6CE006118E6 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				A4297B792E34D6CE006118E6 /* digipodTests */,
 			);
 			name = digipodTests;
 			packageProductDependencies = (
@@ -182,9 +183,6 @@
 			dependencies = (
 				A4297B822E34D6CE006118E6 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				A4297B832E34D6CE006118E6 /* digipodUITests */,
-			);
 			name = digipodUITests;
 			packageProductDependencies = (
 			);
@@ -204,6 +202,11 @@
 				TargetAttributes = {
 					A4297B682E34D6CC006118E6 = {
 						CreatedOnToolsVersion = 16.3;
+						systemCapabilities = {
+							com.apple.Push = {
+								enabled = 1;
+							};
+						};
 					};
 					A4297B752E34D6CE006118E6 = {
 						CreatedOnToolsVersion = 16.3;
@@ -427,11 +430,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = digipod/digipod.dev.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3FKTLL5XPW;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = digipod/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Digipod;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -456,11 +461,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = digipod/digipod.prod.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3FKTLL5XPW;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = digipod/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Digipod;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -634,6 +641,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		A4A74EA22E4759960049BFF3 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4297BA32E350408006118E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
