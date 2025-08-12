@@ -17,7 +17,7 @@ import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import { incrementMinutesSaved } from '../../lib/hustleMeter';
 import { SparklesIcon } from '@heroicons/react/24/solid';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 
 console.log('Firebase config (dashboard):', auth.app.options);
 
@@ -968,8 +968,84 @@ const generatePdfFromHtml = async () => {
 
   return (
     <>
-      <div id="pdf-content" className='absolute px-2 top-[-9999px] left-[-9999px] w-[800px] h-full text-black'>
+      <div id="pdf-content" className='absolute px-2 top-[-9999px] left-[-9999px] w-[816px] h-[1056px] text-black'>
         this is something!
+        {aiDraftsData.drafts?.map((draft: DashboardEmail) => (
+                      <li key={draft.id} className="bg-white/10 rounded-lg p-4 border border-blue-200/10 hover:border-blue-300/20 transition-all">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold text-blue-100 truncate">{draft.subject || 'AI Draft'}</span>
+                              <span className="px-2 py-0.5 text-xs rounded bg-blue-700/60 text-blue-200 font-semibold">
+                                {draft.projectName || 'Client'}
+                              </span>
+                            </div>
+                            
+                            {/* Clickable preview - shows first 100 chars */}
+                            <div 
+                              className="text-sm text-blue-200 mb-3 cursor-pointer hover:text-blue-100 transition-colors"
+                              onClick={() => {
+                                // Show full content in modal
+                                openDraftModal(draft);
+                              }}
+                            >
+                              {draft.body && draft.body.length > 100 
+                                ? `${draft.body.substring(0, 100)}...` 
+                                : draft.body || 'AI generated draft content'
+                              }
+                              <span className="text-blue-400 text-xs ml-2">(Click to view full)</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 text-xs text-blue-300">
+                              <span>To: {draft.projectName || 'Client'}</span>
+                              <span>•</span>
+                              <span>Status: {draft.status}</span>
+                              <span>•</span>
+                              <span>
+                                {getDateFromEmail(draft.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col gap-2 min-w-[120px] items-end">
+                            {draft.status === 'draft' && (
+                              <>
+                                <button
+                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-semibold text-xs shadow-sm transition-all"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await handleApproveDraft(draft);
+                                    // incrementMinutesSaved is already called in handleApproveDraft
+                                  }}
+                                >
+                                  Approve & Send
+                                </button>
+                                <button
+                                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg font-semibold text-xs shadow-sm transition-all"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    // TODO: Implement decline functionality
+                                    console.log('Decline draft:', draft.id);
+                                  }}
+                                >
+                                  Decline
+                                </button>
+                              </>
+                            )}
+                            {draft.status === 'approved' && (
+                              <span className="text-green-400 text-xs font-semibold px-2 py-1 bg-green-900/40 rounded">
+                                Sent ✓
+                              </span>
+                            )}
+                            {draft.status === 'declined' && (
+                              <span className="text-red-400 text-xs font-semibold px-2 py-1 bg-red-900/40 rounded">
+                                Declined ✗
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
       </div>    
     <main className="flex-1 flex flex-col min-h-screen bg-gradient-to-r from-gray-900 to-gray-900 relative overflow-x-hidden">
       {/* Animated shimmer overlay */}
