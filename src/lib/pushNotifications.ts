@@ -48,6 +48,9 @@ export async function sendPushToUser(opts: PushOptions): Promise<string | null> 
       return null;
     }
 
+    console.log(`[push] Sending to ${allTokens.length} tokens for user ${userId}`);
+    console.log(`[push] Title: "${title}", Body: "${body}", Silent: ${silent}`);
+
     const messaging = getMessaging();
     const isSilent = Boolean(silent);
 
@@ -71,6 +74,12 @@ export async function sendPushToUser(opts: PushOptions): Promise<string | null> 
       },
       ...(isSilent ? {} : { notification: { title: title || 'Digipod', body: body || '' } }),
     };
+
+    if (baseMessage.apns?.headers) {
+      console.log(`[push] APNs topic: ${baseMessage.apns.headers['apns-topic']}`);
+      console.log(`[push] APNs push-type: ${baseMessage.apns.headers['apns-push-type']}`);
+      console.log(`[push] APNs priority: ${baseMessage.apns.headers['apns-priority']}`);
+    }
 
     const multicast: MulticastMessage = { ...baseMessage, tokens: allTokens };
     const resp = await messaging.sendEachForMulticast(multicast);
