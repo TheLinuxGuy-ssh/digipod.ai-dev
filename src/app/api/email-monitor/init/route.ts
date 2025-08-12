@@ -46,4 +46,28 @@ export async function GET(request: NextRequest) {
       error: 'Failed to get email monitoring status' 
     }, { status: 500 });
   }
+}
+
+// Manual check endpoint
+export async function PATCH(request: NextRequest) {
+  try {
+    const userId = await getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Manually check emails now
+    await emailMonitor.checkUserEmailsNow(userId);
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Manual email check completed',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error in manual email check:', error);
+    return NextResponse.json({ 
+      error: 'Failed to perform manual email check' 
+    }, { status: 500 });
+  }
 } 

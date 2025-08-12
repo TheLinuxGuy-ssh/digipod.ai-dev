@@ -1394,6 +1394,19 @@ struct SettingsView: View {
                                        .disabled(isTestingNotification)
                                        
                                        Button(action: {
+                                           testLocalNotification()
+                                       }) {
+                                           HStack {
+                                               Image(systemName: "bell")
+                                                   .foregroundColor(.orange)
+                                               Text("Test Local Notification")
+                                                   .font(.body)
+                                               Spacer()
+                                           }
+                                       }
+                                       .disabled(isTestingNotification)
+                                       
+                                       Button(action: {
                                            testBackendConnection()
                                        }) {
                                            HStack {
@@ -1546,6 +1559,25 @@ struct SettingsView: View {
                    }
                }
            }
+           
+                       private func testLocalNotification() {
+                let content = UNMutableNotificationContent()
+                content.title = "Local Test Notification"
+                content.body = "This is a test local notification to verify the device notification system is working"
+                content.sound = .default
+                content.badge = 1
+                
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+                let request = UNNotificationRequest(identifier: "localTest", content: content, trigger: trigger)
+                
+                UNUserNotificationCenter.current().add(request) { error in
+                    if let error = error {
+                        print("❌ Error scheduling local notification: \(error)")
+                    } else {
+                        print("✅ Local notification scheduled successfully")
+                    }
+                }
+            }
            
            private func testBackendConnection() {
                Task {

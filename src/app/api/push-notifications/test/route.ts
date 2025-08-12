@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
         headers: {
           'apns-push-type': isSilent ? 'background' : 'alert',
           'apns-priority': isSilent ? '5' : '10',
+          'apns-topic': 'com.kashish.digipod.digipod',
         },
         payload: {
           aps: (isSilent ? { 'content-available': 1 } : { sound: 'default' }) as ApsPayload,

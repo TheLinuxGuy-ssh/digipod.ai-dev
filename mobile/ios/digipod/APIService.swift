@@ -1,6 +1,9 @@
 import Foundation
 import SwiftUI
 import FirebaseAuth
+#if canImport(UIKit)
+import UIKit
+#endif
     
 // MARK: - API Service
 class APIService: ObservableObject {
@@ -552,7 +555,15 @@ class APIService: ObservableObject {
             
             do {
                 let token = try await user.getIDToken()
+#if DEBUG
+                print("🔑 Firebase ID token (full): \(token)")
+                #if canImport(UIKit)
+                UIPasteboard.general.string = token
+                print("✅ Copied ID token to clipboard")
+                #endif
+#else
                 print("🔍 Firebase token generated: \(token.prefix(20))...")
+#endif
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 print("🔍 Authorization header set")
             } catch {
